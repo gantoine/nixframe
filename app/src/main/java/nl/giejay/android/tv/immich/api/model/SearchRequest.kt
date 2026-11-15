@@ -11,5 +11,7 @@ data class SearchRequest(val page: Int? = 0,
                          val takenBefore: String? = null,
                          val takenAfter: String? = null,
                          val withExif: Boolean = true,
-                         val visibility: String? = null
+                         val visibility: String? = null,
+                         // MetadataSearchDto.city; null is omitted (Gson skips nulls) so other searches are unchanged
+                         val city: String? = null
 )

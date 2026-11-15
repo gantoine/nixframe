@@ -487,6 +487,7 @@ class TimelineViewModelTest {
                             id = "m1",
                             type = "on_this_day",
                             memoryAt = java.util.Date(),
+                            showAt = null,
                             data = nl.giejay.android.tv.immich.api.model.MemoryData(year = 2020),
                             assets = emptyList()
                         )

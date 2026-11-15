@@ -118,7 +118,8 @@ class ScreenSaverAssetLoaderTest {
                     fromDate = anyOrNull(),
                     endDate = anyOrNull(),
                     contentType = eq(ContentType.IMAGE),
-                    albumIds = eq(listOf("shared-album"))
+                    albumIds = eq(listOf("shared-album")),
+                    city = anyOrNull()
                 )
             ).thenReturn(Either.Right(AssetResponse(emptyList(), true)))
 
@@ -140,7 +141,8 @@ class ScreenSaverAssetLoaderTest {
             isNull(),
             isNull(),
             eq(ContentType.IMAGE),
-            eq(listOf("shared-album"))
+            eq(listOf("shared-album")),
+            isNull()
         )
         verify(apiClient, times(1)).listAssetsFromAlbum(
             eq(listOf("shared-album")),
@@ -164,7 +166,8 @@ class ScreenSaverAssetLoaderTest {
                     fromDate = anyOrNull(),
                     endDate = anyOrNull(),
                     contentType = any(),
-                    albumIds = any()
+                    albumIds = any(),
+                    city = anyOrNull()
                 )
             ).thenReturn(Either.Right(AssetResponse(listOf(asset("random-asset")), true)))
         }
@@ -227,7 +230,8 @@ class ScreenSaverAssetLoaderTest {
                     fromDate = anyOrNull(),
                     endDate = anyOrNull(),
                     contentType = any(),
-                    albumIds = any()
+                    albumIds = any(),
+                    city = anyOrNull()
                 )
             ).thenReturn(Either.Right(AssetResponse(listOf(asset("random-asset"), asset("excluded-asset")), true)))
         }
@@ -254,7 +258,8 @@ class ScreenSaverAssetLoaderTest {
                     fromDate = anyOrNull(),
                     endDate = anyOrNull(),
                     contentType = any(),
-                    albumIds = any()
+                    albumIds = any(),
+                    city = anyOrNull()
                 )
             ).thenReturn(Either.Right(AssetResponse(listOf(asset("normal-asset"), taggedAsset), true)))
         }

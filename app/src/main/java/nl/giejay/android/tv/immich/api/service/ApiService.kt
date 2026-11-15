@@ -35,6 +35,10 @@ interface ApiService {
     @GET("assets/{id}")
     suspend fun getAsset(@Path("id") id: String): Response<Asset>
 
+    /** One representative asset per city (GET /search/cities), used for the Places view. */
+    @GET("search/cities")
+    suspend fun listCities(): Response<List<Asset>>
+
     @GET("people")
     suspend fun listPeople(): Response<PeopleResponse>
 
@@ -63,8 +67,13 @@ interface ApiService {
         @Query("userId") userId: String? = null
     ): Response<TimeBucketAssetsResponse>
 
+    /** [forDate] = memories shown on that day; null lists all memories (with [order]/[size]). */
     @GET("memories")
-    suspend fun getMemories(@Query("for") forDate: String): Response<List<Memory>>
+    suspend fun getMemories(
+        @Query("for") forDate: String?,
+        @Query("order") order: String? = null,
+        @Query("size") size: Int? = null
+    ): Response<List<Memory>>
 
     @GET("view/folder/unique-paths")
     suspend fun getUniquePaths(): Response<List<String>>

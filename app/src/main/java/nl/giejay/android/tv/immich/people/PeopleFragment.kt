@@ -44,12 +44,8 @@ class PeopleFragment : VerticalCardGridFragment<Person>() {
             val unselected = sorted.filter { !selected.contains(it) }
             return selected + unselected
         } else {
-            try {
-                return items.sortedBy { it.name }
-            } catch (e: IllegalArgumentException) {
-                Timber.e(e, "Could not sort using sorting order: name")
-                return items
-            }
+            // Keep the server's order (favorites/most photographed first), as Immich's web UI does.
+            return items
         }
     }
 
@@ -60,7 +56,8 @@ class PeopleFragment : VerticalCardGridFragment<Person>() {
     ): Either<String, List<Person>> {
         if (page == startPage) {
             // no pagination possible yet!
-            return apiClient.listPeople()
+            // Browsing shows every face like Immich's web UI; the screensaver picker needs names.
+            return apiClient.listPeople(includeUnnamed = !selectionMode)
         }
         return Either.Right(emptyList())
     }
@@ -89,12 +86,14 @@ class PeopleFragment : VerticalCardGridFragment<Person>() {
 
     override fun createCard(a: Person): Card {
         return Card(
-            a.name ?: "Unknown",
+            a.name.orEmpty(),
             "",
             a.id.toString(),
             ApiUtil.getPersonThumbnail(a.id),
             ApiUtil.getPersonThumbnail(a.id),
-            if (selectionMode) PreferenceManager.get(selectionTypeKey).contains(a.id.toString()) else false
+            if (selectionMode) PreferenceManager.get(selectionTypeKey).contains(a.id.toString()) else false,
+            // Unnamed faces: just the photo, no empty label bar.
+            imageOnly = a.name.isNullOrBlank()
         )
     }
 

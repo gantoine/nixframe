@@ -1111,34 +1111,7 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
         viewModel.applyLeaveOffSnapshot(
             TimelineLeaveOff.afterOpeningMemory(memory.id, viewModel.lastSelectedAssetId)
         )
-        val sliderItems = memory.assets.toSliderItems(
-            keepOrder = true,
-            // Memory payloads omit EXIF/dimensions; portrait pairing is unreliable and can
-            // bind the wrong asset's city/country into the details strip.
-            mergePortrait = false
-        )
-        val config = MediaSliderConfiguration(
-            0,
-            PreferenceManager.get(SLIDER_INTERVAL),
-            PreferenceManager.get(SLIDER_ONLY_USE_THUMBNAILS),
-            isVideoSoundEnable = true,
-            sliderItems,
-            null,
-            animationSpeedMillis = PreferenceManager.get(SLIDER_ANIMATION_SPEED),
-            maxCutOffHeight = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
-            maxCutOffWidth = PreferenceManager.get(SLIDER_MAX_CUT_OFF_WIDTH),
-            glideTransformation = PreferenceManager.get(SLIDER_GLIDE_TRANSFORMATION),
-            enableSlideAnimation = PreferenceManager.get(SCREENSAVER_ANIMATE_ASSET_SLIDE),
-            gradiantOverlay = false,
-            metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER)
-                .filter { it.type != MetaDataType.MEDIA_COUNT },
-            zoomAndScrollPanorama = PreferenceManager.get(SLIDER_ZOOM_SCROLL_PANORAMAS),
-            zoomEffectPercent = PreferenceManager.get(SLIDER_ZOOM_EFFECT),
-            panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
-            useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
-            dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
-            showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
-        )
+        val config = memory.toSliderConfiguration()
         sliderViewModel.configuration = config
         findNavController().navigate(
             AlbumDetailsFragmentDirections.actionToPhotoSlider(

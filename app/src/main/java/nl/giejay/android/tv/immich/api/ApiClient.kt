@@ -68,7 +68,8 @@ internal fun buildListAssetsSearchRequest(
     type: String?,
     personIds: List<UUID>,
     endDate: String?,
-    fromDate: String?
+    fromDate: String?,
+    city: String? = null
 ): SearchRequest = SearchRequest(
     page = page,
     size = pageCount,
@@ -80,7 +81,8 @@ internal fun buildListAssetsSearchRequest(
     takenAfter = fromDate,
     // "timeline" reproduces pre-v3 default for normal browsing; album-scoped search
     // omits it so archived-in-album assets keep showing (VIS-02)
-    visibility = if (albumIds.isEmpty()) "timeline" else null
+    visibility = if (albumIds.isEmpty()) "timeline" else null,
+    city = city
 )
 
 // internal so app/src/test can call it directly without instantiating ApiClient/Retrofit.
@@ -139,8 +141,23 @@ class ApiClient(private val config: ApiClientConfig) {
         return executeAPICall(200) { service.getAlbum(albumId) }
     }
 
-    suspend fun listPeople():Either<String, List<Person>> {
-        return executeAPICall(200) { service.listPeople() }.map { response -> response.people.filter { !it.name.isNullOrBlank() } }
+    /**
+     * People in the library, in the server's order. Unnamed faces are dropped unless
+     * [includeUnnamed] (the People page shows them like Immich's web UI; pickers keep names only).
+     */
+    suspend fun listPeople(includeUnnamed: Boolean = false): Either<String, List<Person>> {
+        return executeAPICall(200) { service.listPeople() }.map { response ->
+            response.people.filter { includeUnnamed || !it.name.isNullOrBlank() }
+        }
+    }
+
+    /** Places: one representative asset per city that has a name, sorted by city. */
+    suspend fun listPlaces(): Either<String, List<Asset>> {
+        return executeAPICall(200) { service.listCities() }.map { assets ->
+            assets.filter { !it.exifInfo?.city.isNullOrBlank() }
+                .distinctBy { it.exifInfo!!.city }
+                .sortedBy { it.exifInfo!!.city!!.lowercase() }
+        }
     }
 
     /** Users who share their library with the signed-in user, sorted by name. */
@@ -221,7 +238,8 @@ class ApiClient(private val config: ApiClientConfig) {
                            fromDate: LocalDateTime? = null,
                            endDate: LocalDateTime? = null,
                            contentType: ContentType,
-                           albumIds: List<String> = emptyList()): Either<String, AssetResponse> {
+                           albumIds: List<String> = emptyList(),
+                           city: String? = null): Either<String, AssetResponse> {
         val searchRequest = buildListAssetsSearchRequest(
             page = page,
             pageCount = pageCount,
@@ -230,7 +248,8 @@ class ApiClient(private val config: ApiClientConfig) {
             type = if (contentType == ContentType.ALL) null else contentType.toString(),
             personIds = personIds,
             endDate = endDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter),
-            fromDate = fromDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter)
+            fromDate = fromDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter),
+            city = city
         )
         val assetsResult = if (random) {
             // RandomSearchDto (POST /search/random) has no `page`/`order` properties at all -
@@ -319,6 +338,14 @@ class ApiClient(private val config: ApiClientConfig) {
         }.map { it.toTimelineAssets() }
 
     /** "On this day" style memories for the current moment (server filters by day-of-year). */
+    /**
+     * Recent memories regardless of the day they surfaced (GET /memories without `for`), newest
+     * first - what Immich's web UI lists. [getMemories] only returns the ones shown today.
+     */
+    suspend fun listRecentMemories(size: Int = 100): Either<String, List<Memory>> {
+        return executeAPICall(200) { service.getMemories(forDate = null, order = "desc", size = size) }
+    }
+
     suspend fun getMemories(): Either<String, List<Memory>> {
         val date = LocalDate.now().toString()
         return executeAPICall(200) { service.getMemories(date) }.fold(

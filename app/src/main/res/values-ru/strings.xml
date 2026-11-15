@@ -64,6 +64,8 @@
     <string name="photos">Фото</string>
     <string name="random">Случайные</string>
     <string name="people">Люди</string>
+    <string name="places">Места</string>
+    <string name="memories">Воспоминания</string>
     <string name="recent">Недавние</string>
     <string name="albums">Альбомы</string>
     <string name="timeline">Лента</string>

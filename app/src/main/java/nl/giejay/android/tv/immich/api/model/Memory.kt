@@ -14,6 +14,8 @@ data class Memory(
     val id: String,
     val type: String,
     val memoryAt: Date,
+    /** When the memory surfaced (start of its "on this day"); null on older servers. */
+    val showAt: Date?,
     val data: MemoryData,
     val assets: List<Asset>
 )

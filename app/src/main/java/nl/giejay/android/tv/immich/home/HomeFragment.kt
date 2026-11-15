@@ -37,6 +37,8 @@ import nl.giejay.android.tv.immich.shared.fragment.GridFragment
 import nl.giejay.android.tv.immich.shared.prefs.HIDDEN_HOME_ITEMS
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.viewmodel.KeyEventsViewModel
+import nl.giejay.android.tv.immich.memories.MemoriesFragment
+import nl.giejay.android.tv.immich.places.PlacesFragment
 import nl.giejay.android.tv.immich.timeline.TimelineFragment
 import nl.giejay.android.tv.immich.weather.WeatherFragment
 import timber.log.Timber
@@ -196,6 +198,8 @@ class HomeFragment : BrowseSupportFragment() {
             Header(ImmichApplication.appContext!!.getString(R.string.photos)) { AllAssetFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.random)) { RandomAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.people)) { PeopleFragment() },
+            Header(ImmichApplication.appContext!!.getString(R.string.places)) { PlacesFragment() },
+            Header(ImmichApplication.appContext!!.getString(R.string.memories)) { MemoriesFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.recent)) { RecentAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.seasonal)) { SimilarTimeAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.folders)) { FolderFragment() },

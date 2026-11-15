@@ -95,6 +95,16 @@
             app:destination="@id/peopleFragment" />
     </fragment>
 
+    <!-- All assets taken in one city, opened from the Places page -->
+    <fragment
+        android:id="@+id/placeAssetsFragment"
+        android:name="nl.giejay.android.tv.immich.places.PlaceAssetsFragment"
+        android:label="PlaceAssetsFragment">
+        <argument
+            android:name="city"
+            app:argType="string" />
+    </fragment>
+
     <!-- A partner's timeline: the regular Timeline, standalone and filtered to that user -->
     <fragment
         android:id="@+id/partnerTimelineFragment"
@@ -237,6 +247,9 @@
         <action
             android:id="@+id/action_homeFragment_to_personAssetsFragment"
             app:destination="@id/personAssetsFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_placeAssetsFragment"
+            app:destination="@id/placeAssetsFragment" />
         <action
             android:id="@+id/action_homeFragment_to_partnerTimelineFragment"
             app:destination="@id/partnerTimelineFragment" />
