@@ -25,6 +25,7 @@ import androidx.multidex.MultiDex
 import nl.giejay.android.tv.immich.api.util.Tls12SocketFactory
 import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.sensors.ActivitySensor
+import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.USER_ID
 import org.conscrypt.Conscrypt
@@ -68,7 +69,9 @@ class ImmichApplication : Application() {
         PreferenceManager.init(this)
         activitySensor = ActivitySensor(this)
 
-        if (BuildConfig.DEBUG) {
+        // Release builds stay quiet unless Settings > Debug > debug mode is on; then log to logcat so
+        // issues on the frame can be diagnosed with `adb logcat`.
+        if (BuildConfig.DEBUG || PreferenceManager.get(DEBUG_MODE)) {
             Timber.plant(Timber.DebugTree())
         }
 

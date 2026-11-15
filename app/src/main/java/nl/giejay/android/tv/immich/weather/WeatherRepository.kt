@@ -1,5 +1,6 @@
 package nl.giejay.android.tv.immich.weather
 
+import nl.giejay.android.tv.immich.api.util.Ipv4FirstDns
 import nl.giejay.android.tv.immich.api.util.UnsafeOkHttpClient
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -17,7 +18,7 @@ object WeatherRepository {
     // Conscrypt supplies the modern ciphers; trust-all skips KitKat's outdated CA store (the cert
     // chain can't validate against a 2014 root store). Acceptable here: Open-Meteo is public,
     // read-only, no credentials are sent.
-    private val client: OkHttpClient by lazy { UnsafeOkHttpClient.unsafeOkHttpClient().build() }
+    private val client: OkHttpClient by lazy { UnsafeOkHttpClient.unsafeOkHttpClient().dns(Ipv4FirstDns).build() }
 
     private val forecastService: OpenMeteoForecastService by lazy {
         retrofit("https://api.open-meteo.com/").create(OpenMeteoForecastService::class.java)

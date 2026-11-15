@@ -1,6 +1,7 @@
 package nl.giejay.android.tv.immich.api
 
 import android.util.Log
+import nl.giejay.android.tv.immich.api.util.Ipv4FirstDns
 import nl.giejay.android.tv.immich.api.util.Tls12SocketFactory.Companion.enableTls12
 import nl.giejay.android.tv.immich.api.util.UnsafeOkHttpClient
 import okhttp3.Interceptor
@@ -18,6 +19,7 @@ object ApiClientFactory {
             UnsafeOkHttpClient.unsafeOkHttpClient()
         else OkHttpClient.Builder().enableTls12()
         builder.addInterceptor(apiKeyInterceptor)
+        builder.dns(Ipv4FirstDns) // avoid IPv6 connect stalls on KitKat (see Ipv4FirstDns)
         if (debugMode) {
             // Logs request/response lines and "HTTP FAILED: <exception>" to logcat (tag ImmixHttp),
             // visible even in release where Timber is not planted.

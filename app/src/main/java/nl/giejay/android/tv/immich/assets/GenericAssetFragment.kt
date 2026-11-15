@@ -55,6 +55,13 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
     private var excludedAssetsLoaded = false
     protected var excludedAssetIds: Set<String> = emptySet()
 
+    /**
+     * Whether [EXCLUDE_ASSETS_IN_ALBUM] applies to this grid. The setting is meant for the
+     * random/seasonal style views; an album's own page must show its contents even if that album
+     * (or an overlapping one) is excluded, so [AlbumDetailsFragment] turns this off.
+     */
+    protected open val applyAlbumExclusions: Boolean = true
+
     private val sliderViewModel: MediaSliderViewModel by activityViewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,7 +93,7 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
     }
 
     override suspend fun loadData(): Either<String, List<Asset>> {
-        if (!excludedAssetsLoaded) {
+        if (!excludedAssetsLoaded && applyAlbumExclusions) {
             val excludedAlbums = PreferenceManager.get(EXCLUDE_ASSETS_IN_ALBUM)
             if (excludedAlbums.isNotEmpty()) {
                 excludedAssetIds = excludedAlbums.toList().pmap {

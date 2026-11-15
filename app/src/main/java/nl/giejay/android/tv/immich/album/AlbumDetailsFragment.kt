@@ -79,6 +79,9 @@ class AlbumDetailsFragment : GenericAssetFragment() {
         randomLoader = null
     }
 
+    // An album page always shows the album's contents; "excluded albums" only affects random/seasonal views.
+    override val applyAlbumExclusions: Boolean = false
+
     override fun onItemSelected(card: Card, indexOf: Int) {
         // no use case yet
     }
