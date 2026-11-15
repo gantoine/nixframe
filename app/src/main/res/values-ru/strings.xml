@@ -69,6 +69,7 @@
     <string name="server">Сервер</string>
     <string name="screensaver">Заставка\n</string>
     <string name="debug">Отладка</string>
+    <string name="android_settings">Настройки Android</string>
     <string name="donate">Пожертвовать</string>
     <string name="use_hd_thumbnails">Использовать миниатюры высокого разрешения</string>
     <string name="use_hd_thumbnails_text">Использовать миниатюры высокого разрешения вместо полноразмерных изображений. Это значительно ускорит загрузку.</string>

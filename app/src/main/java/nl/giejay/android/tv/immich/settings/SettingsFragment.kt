@@ -1,6 +1,9 @@
 package nl.giejay.android.tv.immich.settings
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.provider.Settings
 import androidx.leanback.app.RowsSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.HeaderItem
@@ -15,6 +18,7 @@ import nl.giejay.android.tv.immich.shared.prefs.DebugPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ScreensaverPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ViewPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.WeatherPrefScreen
+import timber.log.Timber
 
 
 class SettingsFragment : RowsSupportFragment() {
@@ -97,16 +101,18 @@ class SettingsFragment : RowsSupportFragment() {
                             )
                         },
                         SettingsCard(
-                            ImmichApplication.appContext!!.getString(R.string.donate),
+                            ImmichApplication.appContext!!.getString(R.string.android_settings),
                             null,
-                            "donate",
-                            "donate",
-                            "donate",
-//                            donateService.isInitialized()
+                            "android_settings",
+                            "ic_settings_settings",
+                            "ic_settings_settings",
+                            visible = systemSettingsIntent().resolveActivity(requireContext().packageManager) != null
                         ) {
-                            findNavController().navigate(
-                                HomeFragmentDirections.actionHomeToDonate()
-                            )
+                            try {
+                                startActivity(systemSettingsIntent())
+                            } catch (e: ActivityNotFoundException) {
+                                Timber.e(e, "No system settings app available")
+                            }
                         }
                     )
                 )
@@ -116,6 +122,8 @@ class SettingsFragment : RowsSupportFragment() {
             )
         }
     }
+
+    private fun systemSettingsIntent() = Intent(Settings.ACTION_SETTINGS)
 
     private fun createCardRow(cards: List<SettingsCard>): ListRow {
         val iconCardPresenter = SettingsIconPresenter(requireContext())

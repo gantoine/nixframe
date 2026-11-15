@@ -69,6 +69,7 @@
     <string name="server">Server</string>
     <string name="screensaver">Screensaver</string>
     <string name="debug">Debug</string>
+    <string name="android_settings">Android settings</string>
     <string name="donate">Donate</string>
     <string name="use_hd_thumbnails">Use high resolution thumbnails</string>
     <string name="use_hd_thumbnails_text">Use high resolution thumbnails instead of native/full images. Will dramatically speed up loading.</string>
