@@ -97,6 +97,11 @@ adb connect <frame-ip>:6666           # ...so reconnect
 adb remount
 adb push app/build/outputs/apk/release/ImmichTV-*.apk /system/app/immich.apk
 adb shell chmod 644 /system/app/immich.apk
+# KitKat doesn't unpack native libs for /system/app APKs: install Conscrypt's by hand, or modern
+# HTTPS (e.g. the Weather tab) fails with an SSL handshake error.
+unzip -o -j app/build/outputs/apk/release/ImmichTV-*.apk lib/armeabi-v7a/libconscrypt_jni.so -d /tmp
+adb push /tmp/libconscrypt_jni.so /system/lib/libconscrypt_jni.so
+adb shell chmod 644 /system/lib/libconscrypt_jni.so
 adb reboot
 ```
 
