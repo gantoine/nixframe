@@ -41,6 +41,7 @@ import nl.giejay.android.tv.immich.memories.MemoriesFragment
 import nl.giejay.android.tv.immich.places.PlacesFragment
 import nl.giejay.android.tv.immich.timeline.TimelineFragment
 import nl.giejay.android.tv.immich.weather.WeatherFragment
+import nl.giejay.android.tv.immich.gallery.GalleryFragment
 import timber.log.Timber
 
 class HomeFragment : BrowseSupportFragment() {
@@ -203,6 +204,7 @@ class HomeFragment : BrowseSupportFragment() {
             Header(ImmichApplication.appContext!!.getString(R.string.recent)) { RecentAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.seasonal)) { SimilarTimeAssetsFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.folders)) { FolderFragment() },
+            Header(ImmichApplication.appContext!!.getString(R.string.gallery)) { GalleryFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.weather)) { WeatherFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.edit)) { GridFragment(hideProgressBar = true) },
             Header(ImmichApplication.appContext!!.getString(R.string.settings)) { SettingsFragment() },

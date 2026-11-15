@@ -48,7 +48,7 @@ class MetaDataItemInnerCustomizerFragment : SettingsScreenFragment.SettingsInner
             _, newVal -> fontSize.value = MetaDataType.valueOf(newVal as String).defaultFontSize
             true
         }
-        val filteredTypes = MetaDataType.entries.filterNot { e -> e != metaDataItem.type && allItems.any { it.type == e } }
+        val filteredTypes = MetaDataType.entries.filterNot { e -> e == MetaDataType.ARTIST || (e != metaDataItem.type && allItems.any { it.type == e }) }
         type.entryValues = filteredTypes.map { it.toString() }.toTypedArray()
         type.entries = filteredTypes.map { it.getTitle(requireContext()) }.toTypedArray()
         type.value = metaDataItem.type.toString()

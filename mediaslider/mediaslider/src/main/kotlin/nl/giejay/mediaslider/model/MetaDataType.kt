@@ -16,7 +16,9 @@ enum class MetaDataType(val titleResId: Int, val defaultFontSize: Int) {
     MEDIA_COUNT(R.string.media_count, 18),
     PEOPLE(R.string.people, 18),
     TIME(R.string.time, 18),
-    CURRENT_DATE(R.string.current_date,18);
+    CURRENT_DATE(R.string.current_date,18),
+    /** Creator credit for non-Immich sources (Gallery). Immich assets never set it. */
+    ARTIST(R.string.artist, 16);
 
     fun getTitle(context: Context): String {
         return context.getString(titleResId)

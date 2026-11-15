@@ -505,6 +505,33 @@ data object USER_ID : ActionPref(null, ImmichApplication.appContext!!.getString(
     }
 }
 
+// gallery (Unsplash)
+/** Unsplash access key; encrypted at rest like [API_KEY]. Blank = use the build-time key, if any. */
+data object GALLERY_UNSPLASH_KEY : StringPref("",
+    ImmichApplication.appContext!!.getString(R.string.gallery_unsplash_key),
+    ImmichApplication.appContext!!.getString(R.string.gallery_unsplash_key_desc)) {
+    override fun key() = "galleryUnsplashKey"
+    override fun getValue(sharedPreferences: SharedPreferences): String =
+        fromPrefValue(sharedPreferences.getString(key(), defaultValue) ?: defaultValue)
+    override fun fromPrefValue(prefValue: String): String = ApiKeyCipher.decryptOrAdoptLegacy(prefValue)
+    override fun save(sharedPreferences: SharedPreferences, value: String) {
+        super.save(sharedPreferences, toPrefValue(value))
+    }
+    override fun toPrefValue(value: String): String = ApiKeyCipher.encrypt(value)
+}
+data object GALLERY_QUERY : StringPref("nature",
+    ImmichApplication.appContext!!.getString(R.string.gallery_query),
+    ImmichApplication.appContext!!.getString(R.string.gallery_query_desc)) {
+    override fun key() = "galleryQuery"
+}
+data object GALLERY_INTERVAL : IntListPref(30,
+    ImmichApplication.appContext!!.getString(R.string.gallery_interval),
+    ImmichApplication.appContext!!.getString(R.string.gallery_interval_desc),
+    R.array.interval_titles,
+    R.array.interval_values) {
+    override fun key() = "galleryInterval"
+}
+
 // weather
 data object WEATHER_LOCATION : StringPref("", ImmichApplication.appContext!!.getString(R.string.weather_location), ImmichApplication.appContext!!.getString(R.string.weather_location_desc)) {
     override fun key() = "weatherLocation"
@@ -687,6 +714,9 @@ data object HomeScreenChannelsPrefScreen : PrefScreen(ImmichApplication.appConte
         )
     )
 )
+
+data object GalleryPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.gallery), "gallery",
+    listOf(PrefCategory("", listOf(GALLERY_QUERY, GALLERY_INTERVAL, GALLERY_UNSPLASH_KEY))))
 
 data object WeatherPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.weather), "weather",
     listOf(PrefCategory("", listOf(WEATHER_LOCATION, WEATHER_USE_FAHRENHEIT, WEATHER_ANIMATED_BACKGROUND))))

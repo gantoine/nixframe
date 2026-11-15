@@ -170,6 +170,11 @@
             android:name="allowFavorite"
             android:defaultValue="true"
             app:argType="boolean" />
+        <!-- start playing the slideshow immediately (Gallery) -->
+        <argument
+            android:name="autoPlay"
+            android:defaultValue="false"
+            app:argType="boolean" />
         <action
             android:id="@+id/photo_slider_to_album_details_fragment"
             app:destination="@id/albumDetailsFragment" />

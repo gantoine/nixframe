@@ -44,6 +44,16 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testOptions.unitTests.includeAndroidResources = true
+
+        // Optional built-in Unsplash access key for the Gallery tab, so it needn't be typed with a
+        // remote. Read from the gitignored local.properties (unsplash.accessKey=...) or the
+        // UNSPLASH_ACCESS_KEY env var — never committed. Only the access key ships in the APK.
+        // Settings > Gallery overrides it.
+        def localProps = new Properties()
+        def localPropsFile = rootProject.file('local.properties')
+        if (localPropsFile.exists()) localPropsFile.withInputStream { localProps.load(it) }
+        def unsplashKey = localProps.getProperty('unsplash.accessKey') ?: System.getenv('UNSPLASH_ACCESS_KEY') ?: ''
+        buildConfigField "String", "UNSPLASH_ACCESS_KEY", "\"${unsplashKey}\""
     }
 
     signingConfigs {
@@ -71,6 +81,7 @@ android {
         // View binding allows efficient, type-safe view access
         // See more at https://developer.android.com/topic/libraries/view-binding
         viewBinding = true
+        buildConfig = true
     }
 
     compileOptions {

@@ -9,6 +9,8 @@ import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
 import nl.giejay.android.tv.immich.api.ApiClientFactory
+import nl.giejay.android.tv.immich.api.util.HostRoutingCallFactory
+import nl.giejay.android.tv.immich.api.util.PublicHttpClient
 import nl.giejay.android.tv.immich.shared.prefs.API_KEY
 import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
@@ -35,18 +37,22 @@ class CustomGlideModule : AppGlideModule() {
     }
 
     private fun reloadFactory(apiKey: String, disableSsl: Boolean) {
-        factory = if (PreferenceManager.isLoggedId()) {
-            OkHttpUrlLoader.Factory(
-                ApiClientFactory.getClient(
-                    disableSsl,
-                    apiKey,
-                    // never enable debug mode of responses in glide, too much data
-                    false
-                )
+        val immichClient = if (PreferenceManager.isLoggedId()) {
+            ApiClientFactory.getClient(
+                disableSsl,
+                apiKey,
+                // never enable debug mode of responses in glide, too much data
+                false
             )
         } else {
-            OkHttpUrlLoader.Factory()
+            PublicHttpClient.client
         }
+        // Only the Immich host gets the API-key client; other hosts (Gallery photos) get a plain one.
+        factory = OkHttpUrlLoader.Factory(
+            HostRoutingCallFactory(immichClient, PublicHttpClient.client) {
+                HostRoutingCallFactory.hostOf(PreferenceManager.hostName)
+            }
+        )
         this.registry?.replace(
             GlideUrl::class.java,
             InputStream::class.java, factory

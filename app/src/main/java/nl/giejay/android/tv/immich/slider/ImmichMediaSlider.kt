@@ -64,8 +64,8 @@ class ImmichMediaSlider : MediaSliderFragment() {
 
         loadMediaSliderView(config)
 
-        if (bundle.timelineView) {
-            // Memories: timeline plugin mounts story progress; start autoplay.
+        if (bundle.timelineView || bundle.autoPlay) {
+            // Memories (timeline plugin mounts story progress) and Gallery: start autoplay.
             (view as MediaSliderView).toggleSlideshow(false)
         }
     }

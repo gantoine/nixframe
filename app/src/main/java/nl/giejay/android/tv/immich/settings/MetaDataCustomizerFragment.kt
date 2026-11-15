@@ -54,7 +54,7 @@ class MetaDataCustomizerFragment : Fragment() {
     }
 
     private fun addItem(align: AlignOption, allMetaData: MutableList<MetaDataItem>) {
-        val findFirstNotAddedMetaDataType = MetaDataType.entries.filterNot { e -> allMetaData.any { it.type == e } }
+        val findFirstNotAddedMetaDataType = MetaDataType.entries.filterNot { e -> e == MetaDataType.ARTIST || allMetaData.any { it.type == e } }
         if (findFirstNotAddedMetaDataType.isEmpty()) {
             Toast.makeText(requireContext(), getString(R.string.already_added_metadata), Toast.LENGTH_SHORT).show()
         } else {
