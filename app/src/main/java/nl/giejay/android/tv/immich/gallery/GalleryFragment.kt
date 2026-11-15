@@ -55,15 +55,18 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     override fun getMainFragmentAdapter() = mainFragmentAdapter
 
     private var photos: List<GalleryPhoto> = emptyList()
-    private var heroIndex = 0
+    /** Index of the photo actually on screen; the slideshow starts here. */
+    private var shownIndex = 0
+    /** Index of the photo currently being loaded for the next cross-fade, or -1. */
+    private var loadingIndex = -1
+    /** Last photo the rotation tried, so a photo that fails to load is skipped rather than retried. */
+    private var requestedIndex = 0
     private lateinit var front: ImageView
     private lateinit var back: ImageView
-    /** Whether [front] (rather than [back]) is the image currently visible. */
-    private var frontShowing = false
 
     private val rotateHero = object : Runnable {
         override fun run() {
-            if (photos.size > 1) showHero((heroIndex + 1) % photos.size)
+            if (photos.size > 1) showHero((requestedIndex + 1) % photos.size)
             view?.postDelayed(this, HERO_ROTATE_MS)
         }
     }
@@ -77,6 +80,7 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
         front = view.findViewById(R.id.gallery_hero_front)
         back = view.findViewById(R.id.gallery_hero_back)
         front.alpha = 0f
+        front.tag = null
         view.findViewById<View>(R.id.gallery_play).setOnClickListener { play() }
 
         // Small caps label above the title: the search term, or nothing when searching everything.
@@ -97,6 +101,9 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
                     photos = result.photos
                     view.findViewById<View>(R.id.gallery_status).visibility = View.GONE
                     view.findViewById<View>(R.id.gallery_content).visibility = View.VISIBLE
+                    // While loading, the page itself holds focus (so RIGHT can enter it); now that
+                    // there's a Play button, hand focus to it so CENTER starts the slideshow.
+                    if (view.isFocused) view.findViewById<View>(R.id.gallery_play).requestFocus()
                     showHero(0)
                     restartRotation()
                 }
@@ -134,32 +141,43 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     }
 
     /**
-     * Cross-fades to photo [index] with two image views at fixed depth ([front] above [back]):
-     * whichever one is currently hidden gets the new photo, then [front] fades in (or out, to reveal
-     * [back]). Glide therefore only ever replaces the bitmap of a view that isn't on screen.
+     * Cross-fades to photo [index] using two image views at fixed depth ([front] above [back]).
+     * The new photo always goes into whichever view is currently hidden (judged from [front]'s
+     * actual target alpha, not a toggled flag), and the fade then goes to an explicit end state.
+     * So a failed load just leaves the current photo up (the next tick tries the following one),
+     * and a repeated delivery (Glide re-running a request after the screen wakes) is harmless.
+     * [shownIndex] only moves once the photo is really on screen.
      */
     private fun showHero(index: Int) {
         val photo = photos.getOrNull(index) ?: return
         val v = view ?: return
-        heroIndex = index
-        val target = if (frontShowing) back else front
+        loadingIndex = index
+        requestedIndex = index
+        val frontVisible = front.tag == VISIBLE_TAG
+        val target = if (frontVisible) back else front
         Glide.with(this)
             .load(photo.imageUrl)
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
                     Timber.w(e, "Could not load gallery photo ${photo.id}")
+                    if (loadingIndex == index) loadingIndex = -1
                     return false
                 }
 
-                override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
-                    if (!isAdded || heroIndex != index) return false
+                override fun onResourceReady(resource: Drawable, model: Any, glideTarget: Target<Drawable>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    if (!isAdded || loadingIndex != index) return false
+                    loadingIndex = -1
+                    shownIndex = index
                     v.findViewById<TextView>(R.id.gallery_title).text = photo.title
                     v.findViewById<TextView>(R.id.gallery_artist).apply {
                         text = photo.artist.orEmpty()
                         visibility = if (photo.artist == null) View.GONE else View.VISIBLE
                     }
-                    frontShowing = !frontShowing
-                    front.animate().alpha(if (frontShowing) 1f else 0f).setDuration(CROSSFADE_MS).start()
+                    // Reveal the view that just received the photo.
+                    val showFront = target === front
+                    front.tag = if (showFront) VISIBLE_TAG else null
+                    front.animate().cancel()
+                    front.animate().alpha(if (showFront) 1f else 0f).setDuration(CROSSFADE_MS).start()
                     return false
                 }
             })
@@ -171,7 +189,7 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     private fun play() {
         if (photos.isEmpty()) return
         val config = MediaSliderConfiguration(
-            startPosition = heroIndex,
+            startPosition = shownIndex,
             interval = PreferenceManager.get(GALLERY_INTERVAL),
             isOnlyUseThumbnails = false,
             isVideoSoundEnable = false,
@@ -195,7 +213,9 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
             ),
             zoomAndScrollPanorama = false,
             zoomEffectPercent = PreferenceManager.get(SLIDER_ZOOM_EFFECT),
-            panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT)
+            panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
+            // Title + artist appear with each new photo, then fade away to leave just the image.
+            metaDataAutoHideMillis = CREDIT_VISIBLE_MS
         )
         ViewModelProvider(requireActivity())[MediaSliderViewModel::class.java].configuration = config
         findNavController().navigate(
@@ -222,5 +242,8 @@ class GalleryFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     companion object {
         private const val HERO_ROTATE_MS = 12_000L
         private const val CROSSFADE_MS = 1_200L
+        private const val CREDIT_VISIBLE_MS = 5_000L
+        /** Marks [front] as the visible image (its fade target is opaque). */
+        private const val VISIBLE_TAG = "visible"
     }
 }

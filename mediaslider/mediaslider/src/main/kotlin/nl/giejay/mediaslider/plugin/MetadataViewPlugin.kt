@@ -21,6 +21,9 @@ import nl.giejay.mediaslider.view.MediaSliderController
 
 class MetadataViewPlugin : SliderViewPlugin<MetadataRenderState>, SliderControllerPlugin {
 
+    /** Pending fade-out of the overlay (see [MediaSliderConfiguration.metaDataAutoHideMillis]). */
+    private var hideOverlay: Runnable? = null
+
     override fun createState(context: SliderViewPluginContext, config: MediaSliderConfiguration): MetadataRenderState {
         val rightAdapter = MetaDataAdapter(
             context.context,
@@ -106,6 +109,21 @@ class MetadataViewPlugin : SliderViewPlugin<MetadataRenderState>, SliderControll
             sliderItemIndex,
             config
         )
+        if (metaDataHolderView != null) showOverlayBriefly(metaDataHolderView, config.metaDataAutoHideMillis)
+    }
+
+    /**
+     * Fades the overlay in for the new item, then (when [autoHideMillis] > 0) fades it out after
+     * that long. A new item cancels any pending fade-out, so each item gets its full time.
+     */
+    private fun showOverlayBriefly(holder: View, autoHideMillis: Long) {
+        if (autoHideMillis <= 0L) return
+        hideOverlay?.let { holder.removeCallbacks(it) }
+        holder.animate().cancel()
+        holder.animate().alpha(1f).setDuration(OVERLAY_FADE_IN_MS).start()
+        val hide = Runnable { holder.animate().alpha(0f).setDuration(OVERLAY_FADE_OUT_MS).start() }
+        hideOverlay = hide
+        holder.postDelayed(hide, autoHideMillis)
     }
 
     override fun onControllerVisibilityChanged(isVisible: Boolean, rootView: View, controller: MediaSliderController, config: MediaSliderConfiguration) {
@@ -142,6 +160,9 @@ class MetadataViewPlugin : SliderViewPlugin<MetadataRenderState>, SliderControll
             }
         }
     }
+
+    private companion object {
+        const val OVERLAY_FADE_IN_MS = 500L
+        const val OVERLAY_FADE_OUT_MS = 900L
+    }
 }
-
-

@@ -31,6 +31,11 @@ class MediaSliderConfiguration(
     val dpadSeeksInVideo: Boolean = false,
     /** When true, [nl.giejay.mediaslider.plugin.DateOverlayViewPlugin] shows DATE at the top. */
     val showDateTopLeft: Boolean = false,
+    /**
+     * When > 0, the metadata overlay (and its gradient) is shown for this long each time a new item
+     * appears, then fades out until the next item. 0 (default) keeps it always visible.
+     */
+    val metaDataAutoHideMillis: Long = 0L,
     var controllerPlugins: List<SliderControllerPlugin> = emptyList(),
     var viewPlugins: List<SliderViewPlugin<*>> = emptyList(),
     var keyEventPlugins: List<SliderKeyEventPlugin> = emptyList()
