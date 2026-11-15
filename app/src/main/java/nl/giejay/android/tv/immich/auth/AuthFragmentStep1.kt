@@ -12,7 +12,7 @@ import nl.giejay.android.tv.immich.R
 import nl.giejay.android.tv.immich.shared.guidedstep.GuidedStepUtil.addAction
 import nl.giejay.android.tv.immich.shared.guidedstep.GuidedStepUtil.addCheckedAction
 import timber.log.Timber
-
+import kotlin.collections.emptySet
 
 
 class AuthFragmentStep1 : GuidedStepSupportFragment() {

@@ -38,12 +38,20 @@
         app:destination="@id/albumFragment" />
 
     <action
+        android:id="@+id/action_global_people_fragment"
+        app:destination="@id/peopleFragment" />
+
+    <action
         android:id="@+id/action_to_photo_slider"
         app:destination="@id/photoSlider" />
 
     <action
         android:id="@+id/action_to_metadata_fragment"
         app:destination="@id/metaDataCustomizer" />
+
+    <action
+        android:id="@+id/action_global_screensaver_preview"
+        app:destination="@id/screenSaverPreviewFragment" />
 
     <!--    <fragment-->
     <!--        android:id="@+id/playbackFragment"-->
@@ -87,10 +95,36 @@
             app:destination="@id/peopleFragment" />
     </fragment>
 
+    <!-- A partner's timeline: the regular Timeline, standalone and filtered to that user -->
+    <fragment
+        android:id="@+id/partnerTimelineFragment"
+        android:name="nl.giejay.android.tv.immich.timeline.TimelineFragment"
+        android:label="PartnerTimelineFragment">
+        <argument
+            android:name="userId"
+            app:argType="string" />
+        <argument
+            android:name="userName"
+            app:argType="string" />
+    </fragment>
+
     <fragment
         android:id="@+id/peopleFragment"
         android:name="nl.giejay.android.tv.immich.people.PeopleFragment"
         android:label="PeopleFragment">
+
+        <argument
+            android:name="selectionMode"
+            app:argType="boolean" />
+
+        <argument
+            android:name="selectionType"
+            app:argType="string" />
+
+        <argument
+            android:name="returnTo"
+            android:defaultValue=""
+            app:argType="string" />
     </fragment>
 
     <fragment
@@ -109,12 +143,23 @@
     </fragment>
 
     <fragment
+        android:id="@+id/screenSaverPreviewFragment"
+        android:name="nl.giejay.android.tv.immich.screensaver.ScreenSaverPreviewFragment"
+        android:label="ScreenSaverPreview" />
+
+    <fragment
         android:id="@+id/photoSlider"
         android:name="nl.giejay.android.tv.immich.slider.ImmichMediaSlider"
         android:label="PhotoSlider">
         <argument
-            android:name="config"
-            app:argType="nl.giejay.mediaslider.config.MediaSliderConfiguration" />
+            android:name="timelineView"
+            android:defaultValue="false"
+            app:argType="boolean" />
+        <!-- false for another user's assets (a partner's timeline): they can't be favourited -->
+        <argument
+            android:name="allowFavorite"
+            android:defaultValue="true"
+            app:argType="boolean" />
         <action
             android:id="@+id/photo_slider_to_album_details_fragment"
             app:destination="@id/albumDetailsFragment" />
@@ -175,6 +220,11 @@
         <argument
             android:name="selectionType"
             app:argType="string" />
+
+        <argument
+            android:name="returnTo"
+            android:defaultValue=""
+            app:argType="string" />
     </fragment>
 
     <fragment
@@ -187,6 +237,9 @@
         <action
             android:id="@+id/action_homeFragment_to_personAssetsFragment"
             app:destination="@id/personAssetsFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_partnerTimelineFragment"
+            app:destination="@id/partnerTimelineFragment" />
         <action
             android:id="@+id/action_homeFragment_to_view_settings"
             app:destination="@id/viewSettings" />
@@ -224,6 +277,10 @@
             android:name="screen"
             android:defaultValue="VIEWER"
             app:argType="nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen" />
+        <argument
+            android:name="fullscreen"
+            android:defaultValue="false"
+            app:argType="boolean" />
     </dialog>
 
     <fragment

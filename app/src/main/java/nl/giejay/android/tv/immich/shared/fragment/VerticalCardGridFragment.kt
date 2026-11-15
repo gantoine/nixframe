@@ -60,7 +60,8 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
     private val assetsStillToRender: MutableList<ITEM> = mutableListOf()
     protected var currentPage: Int = startPage
     protected var allPagesLoaded: Boolean = false
-    private var currentLoadingJob: Job? = null
+    private var initialLoadingJob: Job? = null
+    protected var currentLoadingJob: Job? = null
     // When set (via setBackgroundImage), the first/index-0 selection keeps showing this background
     // instead of the first card's own — used to seed the home background from the last opened album.
     private var initialBackgroundOverride: String? = null
@@ -94,7 +95,7 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
             apiClient =
                 ApiClient.getClient(
                     ApiClientConfig(
-                        PreferenceManager.get(HOST_NAME),
+                        PreferenceManager.hostName,
                         PreferenceManager.get(API_KEY),
                         PreferenceManager.get(DISABLE_SSL_VERIFICATION),
                         PreferenceManager.get(DEBUG_MODE)
@@ -165,7 +166,7 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
     }
 
     protected open fun fetchInitialItems() {
-        ioScope.launch {
+        initialLoadingJob = ioScope.launch {
             loadData().fold(
                 { itLeft -> showErrorMessage(itLeft) },
                 { itRight ->
@@ -200,7 +201,11 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
     }
 
     protected open fun clearState() {
+        // cancel in-flight loads of the previous sort/filter so they cannot append stale items
+        initialLoadingJob?.cancel()
+        currentLoadingJob?.cancel()
         currentPage = startPage
+        allPagesLoaded = false
         assets = emptyList()
         assetsStillToRender.clear()
         adapter.clear()
@@ -218,6 +223,9 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
     }
 
     protected open fun filterItems(items: List<ITEM>): List<ITEM> = items
+
+    /** Identity used to drop duplicates when new batches are added; defaults to equality of the item itself. */
+    protected open fun itemKey(item: ITEM): Any = item as Any
 
     protected open suspend fun loadMoreAssets(): List<ITEM> {
         if (allPagesLoaded) {
@@ -269,7 +277,14 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
         requireActivity().windowManager.defaultDisplay.getMetrics(mMetrics)
     }
 
+    override fun onPause() {
+        // Cancel pending hover-background loads so they don't paint onto Timeline later.
+        Debouncer.cancel(BACKGROUND_DEBOUNCE_KEY)
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        Debouncer.cancel(BACKGROUND_DEBOUNCE_KEY)
         super.onDestroyView()
         if (mBackgroundManager?.isAttached == true) {
             mBackgroundManager?.drawable = null
@@ -295,7 +310,9 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
     }
 
     protected open fun setData(assets: List<ITEM>) {
-        val sortedItems = sortItems(assets.filter { !this@VerticalCardGridFragment.assets.contains(it) })
+        val knownKeys = this@VerticalCardGridFragment.assets.mapTo(HashSet()) { itemKey(it) }
+        // add() also drops duplicates inside the incoming batch itself
+        val sortedItems = sortItems(assets.filter { knownKeys.add(itemKey(it)) })
         this@VerticalCardGridFragment.assets += sortedItems
         assetsStillToRender.addAll(sortedItems)
         addAssetsPaginated()
@@ -319,12 +336,17 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
 
     private fun loadBackgroundDebounced(backgroundUrl: String?, onLoadFailed: () -> Unit) {
         if (PreferenceManager.get(LOAD_BACKGROUND_IMAGE)) {
-            Debouncer.debounce("background", { loadBackground(backgroundUrl, onLoadFailed) }, 1, TimeUnit.SECONDS)
+            Debouncer.debounce(
+                BACKGROUND_DEBOUNCE_KEY,
+                { loadBackground(backgroundUrl, onLoadFailed) },
+                1,
+                TimeUnit.SECONDS
+            )
         }
     }
 
     private fun loadBackground(backgroundUrl: String?, onLoadFailed: () -> Unit) {
-        if (!isAdded || !PreferenceManager.get(LOAD_BACKGROUND_IMAGE)) {
+        if (!isAdded || !isResumed || !PreferenceManager.get(LOAD_BACKGROUND_IMAGE)) {
             return
         }
         if (backgroundUrl.isNullOrEmpty()) {
@@ -343,6 +365,8 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
                         resource: Drawable,
                         transition: Transition<in Drawable?>?
                     ) {
+                        // Fragment may already be gone (e.g. user switched to Timeline).
+                        if (!isAdded || !isResumed) return
                         try {
                             mBackgroundManager?.drawable = resource
                         } catch (e: Exception) {
@@ -351,6 +375,7 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
                     }
 
                     override fun onLoadFailed(errorDrawable: Drawable?) {
+                        if (!isAdded || !isResumed) return
                         onLoadFailed()
                     }
                 })
@@ -379,5 +404,7 @@ abstract class VerticalCardGridFragment<ITEM> : GridFragment() {
         private const val FETCH_NEXT_THRESHOLD = COLUMNS * 6
         const val FETCH_COUNT = 50
         const val FETCH_PAGE_COUNT = FETCH_COUNT
+        /** Shared with Timeline so it can cancel a pending Photos background paint. */
+        const val BACKGROUND_DEBOUNCE_KEY = "background"
     }
 }

@@ -30,12 +30,14 @@ import nl.giejay.android.tv.immich.assets.FolderFragment
 import nl.giejay.android.tv.immich.assets.RandomAssetsFragment
 import nl.giejay.android.tv.immich.assets.RecentAssetsFragment
 import nl.giejay.android.tv.immich.assets.SimilarTimeAssetsFragment
+import nl.giejay.android.tv.immich.partners.PartnersFragment
 import nl.giejay.android.tv.immich.people.PeopleFragment
 import nl.giejay.android.tv.immich.settings.SettingsFragment
 import nl.giejay.android.tv.immich.shared.fragment.GridFragment
 import nl.giejay.android.tv.immich.shared.prefs.HIDDEN_HOME_ITEMS
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.viewmodel.KeyEventsViewModel
+import nl.giejay.android.tv.immich.timeline.TimelineFragment
 import nl.giejay.android.tv.immich.weather.WeatherFragment
 import timber.log.Timber
 
@@ -58,8 +60,17 @@ class HomeFragment : BrowseSupportFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         headersSupportFragment.setOnHeaderViewSelectedListener { _, row ->
-            title = row?.headerItem?.name ?: "-"
             selectedPosition = row?.let { mRowsAdapter.indexOf(it) } ?: 0
+            val name = row?.headerItem?.name ?: "-"
+            // Timeline is a full-bleed mosaic — never show the Leanback page title there
+            // (it flashes and slides away when entering the page).
+            if (name == getString(R.string.timeline)) {
+                title = ""
+                showTitle(false)
+            } else {
+                title = name
+                showTitle(true)
+            }
         }
 
         // Defer past BrowseSupportFragment's own setup: it wires its internal header-click handler
@@ -131,7 +142,8 @@ class HomeFragment : BrowseSupportFragment() {
         isHeadersTransitionOnBackEnabled = true
         // Translucent sidebar so the photo behind shows through (this colors the headers dock).
         brandColor = android.graphics.Color.parseColor("#99000000")
-        title = getString(R.string.albums)
+        // Set per page by the header-selected listener (blank on Timeline).
+        title = ""
 //        setOnSearchClickedListener {
 //            Toast.makeText(
 //                activity, "Search!", Toast.LENGTH_SHORT
@@ -174,6 +186,8 @@ class HomeFragment : BrowseSupportFragment() {
         private const val KEY_SETUP_SCANCODE = 141
 
         private val HEADERS: List<Header> = listOf(
+            Header(ImmichApplication.appContext!!.getString(R.string.timeline)) { TimelineFragment() },
+            Header(ImmichApplication.appContext!!.getString(R.string.partners)) { PartnersFragment() },
             Header(ImmichApplication.appContext!!.getString(R.string.albums)) {
                 AlbumFragment().apply {
                     arguments = bundleOf("selectionMode" to false)

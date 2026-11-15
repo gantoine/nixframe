@@ -20,9 +20,12 @@ import android.view.View
 import android.view.ViewGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.io.IOException
 import java.io.InputStream
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.roundToInt
 
 /**
@@ -30,8 +33,11 @@ import kotlin.math.roundToInt
  */
 object Utils {
 
-    fun <A, B>List<A>.pmap(f: suspend (A) -> B): List<B> = runBlocking {
-        map { async(Dispatchers.Default) { f(it) } }.map { it.await() }
+    suspend fun <A, B> List<A>.pmap(
+        context: CoroutineContext = EmptyCoroutineContext,
+        f: suspend (A) -> B
+    ): List<B> = coroutineScope {
+        map { async(context) { f(it) } }.awaitAll()
     }
 
     fun View.getAllChildren(): List<View> {

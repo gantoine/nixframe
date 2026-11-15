@@ -3,12 +3,25 @@ package nl.giejay.android.tv.immich.shared.prefs
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.CoroutineScope
+import nl.giejay.android.tv.immich.security.ApiKeyCipher
+import nl.giejay.android.tv.immich.ImmichApplication
+import nl.giejay.android.tv.immich.slider.FavoriteButtonControllerPlugin
+import nl.giejay.android.tv.immich.slider.FavoriteService
 import nl.giejay.mediaslider.adapter.AlignOption
 import nl.giejay.mediaslider.adapter.MetaDataClock
 import nl.giejay.mediaslider.adapter.MetaDataItem
 import nl.giejay.mediaslider.adapter.MetaDataMediaCount
 import nl.giejay.mediaslider.adapter.MetaDataSliderItem
 import nl.giejay.mediaslider.model.MetaDataType
+import nl.giejay.mediaslider.plugin.DateOverlayViewPlugin
+import nl.giejay.mediaslider.plugin.DisplayTimeVolumeKeyEventPlugin
+import nl.giejay.mediaslider.plugin.ExternalPlayerButtonControllerPlugin
+import nl.giejay.mediaslider.plugin.MediaRemoteControlsKeyEventPlugin
+import nl.giejay.mediaslider.plugin.MetadataViewPlugin
+import nl.giejay.mediaslider.plugin.SliderControllerPlugin
+import nl.giejay.mediaslider.plugin.SliderKeyEventPlugin
+import nl.giejay.mediaslider.plugin.SliderViewPlugin
 import nl.giejay.mediaslider.util.MetaDataConverter
 import okhttp3.HttpUrl
 import kotlin.reflect.KClass
@@ -16,6 +29,13 @@ import kotlin.reflect.KClass
 enum class MetaDataScreen {
     SCREENSAVER, VIEWER
 }
+
+/** Default Immich slider plugins with a shared [MetadataViewPlugin] instance. */
+data class EnabledSliderPlugins(
+    val controllerPlugins: List<SliderControllerPlugin>,
+    val viewPlugins: List<SliderViewPlugin<*>>,
+    val keyEventPlugins: List<SliderKeyEventPlugin>
+)
 
 object PreferenceManager {
     lateinit var sharedPreference: SharedPreferences
@@ -31,6 +51,7 @@ object PreferenceManager {
     fun init(context: Context) {
         sharedPreference = PreferenceManager.getDefaultSharedPreferences(context)
         liveSharedPreferences = LiveSharedPreferences(sharedPreference)
+        migrateApiKeyIfNeeded()
         subclasses(Pref::class).filter { it.objectInstance != null }.forEach { pref ->
             val prefInstance = pref.objectInstance!! as Pref<Any, *, *>
             liveSharedPreferences.subscribeTyped(prefInstance) { typeValue ->
@@ -39,10 +60,24 @@ object PreferenceManager {
         }
     }
 
+    // one-time, before the subscription loop below reads it: re-save a legacy-plaintext or
+    // previously-unencryptable API key now that ApiKeyCipher can (re)try encrypting it
+    private fun migrateApiKeyIfNeeded() {
+        // Nothing to migrate to below API 23 (no AndroidKeyStore AES): legacy plaintext is read as-is.
+        if (!ApiKeyCipher.isSupported) return
+        val raw = sharedPreference.getString(API_KEY.key(), "") ?: return
+        if (raw.isNotEmpty() && !ApiKeyCipher.isEncrypted(raw)) {
+            API_KEY.save(sharedPreference, ApiKeyCipher.decryptOrAdoptLegacy(raw))
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <T> get(key: Pref<T, *, *>): T {
         return liveContext[key.key()] as T ?: key.getValue(sharedPreference)
     }
+
+    val hostName: String
+        get() = get(HOST_NAME).replace("\\s".toRegex(), "").removeSuffix("/")
 
     fun <T, PREFTYPE> save(key: Pref<T, *, PREFTYPE>, value: T) {
         liveContext[key.key()] = value
@@ -67,12 +102,12 @@ object PreferenceManager {
     }
 
     fun isValid(hostName: String?, apiKey: String?): Boolean {
-        return hostName?.isNotBlank() == true && apiKey?.isNotBlank() == true && HttpUrl.parse(hostName) != null
+        return hostName?.isNotBlank() == true && apiKey?.isNotBlank() == true && HttpUrl.parse(hostName) != null // OkHttp 3.12 (KitKat) API
     }
 
     fun removeApiSettings() {
-        HOST_NAME.save(sharedPreference, "")
-        API_KEY.save(sharedPreference, "")
+        save(HOST_NAME, "")
+        save(API_KEY, "")
     }
 
     private fun removeStringSetItem(item: String, prefKey: StringSetPref) {
@@ -138,9 +173,6 @@ object PreferenceManager {
         if (get(SCREENSAVER_SHOW_DATE)) {
             metaData.add(MetaDataSliderItem(MetaDataType.DATE, AlignOption.RIGHT))
         }
-        if (get(SCREENSAVER_SHOW_MEDIA_COUNT)) {
-            metaData.add(MetaDataMediaCount(AlignOption.RIGHT))
-        }
 
         return metaData
     }
@@ -162,4 +194,26 @@ object PreferenceManager {
     fun hasMetaDataForScreen(metaDataScreen: MetaDataScreen, align: AlignOption): Boolean {
         return sharedPreference.contains(createKey(metaDataScreen, align))
     }
+
+    /**
+     * Builds a fresh set of Immich slider plugins for one slider session.
+     * [MetadataViewPlugin] is shared across view + controller lists.
+     * [DateOverlayViewPlugin] optionally renders DATE at the top of the slider.
+     * [MediaRemoteControlsKeyEventPlugin] handles remote/D-pad seek and related keys.
+     * [DisplayTimeVolumeKeyEventPlugin] maps Up/Down to volume (video) / display time (photo).
+     */
+    fun createEnabledSliderPlugins(scope: CoroutineScope, favoriteService: FavoriteService): EnabledSliderPlugins {
+        val metadataPlugin = MetadataViewPlugin()
+        val remoteControlsPlugin = MediaRemoteControlsKeyEventPlugin()
+        return EnabledSliderPlugins(
+            controllerPlugins = listOf(
+                FavoriteButtonControllerPlugin(favoriteService, scope),
+                ExternalPlayerButtonControllerPlugin(),
+                metadataPlugin
+            ),
+            viewPlugins = listOf(metadataPlugin, DateOverlayViewPlugin()),
+            keyEventPlugins = listOf(DisplayTimeVolumeKeyEventPlugin(ImmichApplication.appContext!!), remoteControlsPlugin)
+        )
+    }
+
 }

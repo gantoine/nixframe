@@ -9,13 +9,12 @@ import android.view.View.GONE
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.Toast
-import com.google.android.exoplayer2.ui.PlayerView
 import androidx.viewpager.widget.PagerAdapter
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
-import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.zeuskartik.mediaslider.R
+import nl.giejay.mediaslider.player.AmlogicSafeRenderersFactory
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.model.SliderItemType
@@ -25,12 +24,11 @@ import nl.giejay.mediaslider.view.ExoPlayerView
 import nl.giejay.mediaslider.view.TouchImageView
 import timber.log.Timber
 
+
 class ScreenSlidePagerAdapter(private val context: Context,
                               private var items: List<SliderItemViewHolder>,
                               private val config: MediaSliderConfiguration,
                               private val currentIndex: () -> Int,
-                              private val transformResult: (String, Int) -> Unit,
-                              private val buttonListener: (Int) -> Unit,
                               private val exoPlayerListener: ExoPlayerListener) : PagerAdapter() {
     private var imageView: TouchImageView? = null
     private val progressBars: MutableMap<Int, ProgressBar> = HashMap()
@@ -71,8 +69,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
             // Use texture view for vertical videos OR if this position previously failed with SurfaceView
             val useTextureView = model.mainItem.orientation != 1 || failedPositions.contains(model.url)
             view = ExoPlayerView(context, if (useTextureView) R.layout.video_item_texture_view else R.layout.video_item)
-            view.tag = "view$position"
-            view.setupPlayer(config, DefaultRenderersFactory(context), exoPlayerListener, buttonListener) { player, error ->
+            view.setupPlayer(config, AmlogicSafeRenderersFactory(context), exoPlayerListener) { player, error ->
                 val shouldRetry = !useTextureView && !failedPositions.contains(model.url)
                 Timber.e(error,
                     "Player error at position $position for url ${model.url}. Already failed: ${failedPositions.contains(model.url)}." +
@@ -94,6 +91,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                 }
             }
         }
+        view?.tag = "view$position"
         container.addView(view)
         return view!!
     }
@@ -109,7 +107,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
         }
         var glideLoader = Glide.with(context)
             .load(if (config.isOnlyUseThumbnails) model.thumbnailUrl else model.url)
-            .transform(config.glideTransformation.transform(context, config) { result -> transformResult(result, position) })
+            .transform(config.glideTransformation.transform(context, config))
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(e: GlideException?,
                                           model: Any?,

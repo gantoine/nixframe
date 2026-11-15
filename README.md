@@ -29,6 +29,9 @@ most of this README's frame-specific caveats don't apply to you.
 > reads the native `gpio_jni` library and only activates when `/etc/nix.model` exists; otherwise it
 > falls back gracefully.
 
+**Immich server compatibility:** requires Immich server **v3.0.0 or newer** (upstream adapted to
+3.0's breaking API changes). No extra API key permissions are needed beyond those listed below.
+
 ## Know your frame first
 
 Frame models run different Android versions, and that changes everything below. Check yours:

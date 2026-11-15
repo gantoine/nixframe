@@ -38,8 +38,8 @@ android {
         }
         // Render the weather VectorDrawables on API 19 via the support library.
         vectorDrawables.useSupportLibrary = true
-        versionCode 125
-        versionName "3.3"
+        versionCode 150
+        versionName "7.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testOptions.unitTests.includeAndroidResources = true
@@ -138,8 +138,9 @@ dependencies {
 //    def work_version = "2.7.1"
 //    implementation "androidx.work:work-runtime:$work_version"
 
-    // TV provider library used for updating home screen channels
-//    implementation 'androidx.tvprovider:tvprovider:1.0.0'
+    // TV provider library used for Android TV home-screen channels. Declares minSdk 21 (overridden in
+    // the manifest): every use is behind an API 26 (O) check, so it is never touched on KitKat.
+    implementation 'androidx.tvprovider:tvprovider:1.0.0'
 
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
     implementation group: 'io.reactivex.rxjava3', name: 'rxjava', version: '3.1.8'
@@ -181,6 +182,8 @@ dependencies {
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0-native-mt"
     testImplementation "org.mockito:mockito-core:4.4.0"
     testImplementation 'org.mockito:mockito-inline:4.4.0'
+    // 4.1.0 is the mockito-kotlin line built against Mockito 4.x
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:4.1.0'
     testImplementation 'org.robolectric:robolectric:4.7.3'
 
     testImplementation 'com.google.apis:google-api-services-androidpublisher:v3-rev20230815-2.0.0'

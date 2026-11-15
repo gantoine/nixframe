@@ -21,7 +21,9 @@ import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.HOST_NAME
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ALBUMS
+import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PEOPLE
 import timber.log.Timber
+import kotlin.collections.emptySet
 
 
 data class AuthSettings(val hostName: String, val apiKey: String) {
@@ -52,7 +54,7 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
             actions,
             ACTION_NAME,
             getString(R.string.server_url_hint),
-            PreferenceManager.get(HOST_NAME),
+            PreferenceManager.hostName,
             InputType.TYPE_CLASS_TEXT
         )
         addEditableAction(
@@ -93,6 +95,7 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         if (action.id == ACTION_CONTINUE) {
             if (entry.isValid()) {
                 PreferenceManager.save(SCREENSAVER_ALBUMS, emptySet())
+                PreferenceManager.save(SCREENSAVER_PEOPLE, emptySet())
                 PreferenceManager.save(API_KEY, entry.apiKey)
                 PreferenceManager.save(HOST_NAME, entry.hostName)
                 PreferenceManager.save(DISABLE_SSL_VERIFICATION, findActionById(ACTION_CHECK_CERTS)?.isChecked == true)

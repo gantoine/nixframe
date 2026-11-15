@@ -6,26 +6,37 @@ import arrow.core.Option
 import arrow.core.flatMap
 import arrow.core.getOrElse
 import nl.giejay.android.tv.immich.api.model.Album
-import nl.giejay.android.tv.immich.api.model.AlbumDetails
 import nl.giejay.android.tv.immich.api.model.Asset
-import nl.giejay.android.tv.immich.api.model.Bucket
+import nl.giejay.android.tv.immich.api.model.AssetResponse
 import nl.giejay.android.tv.immich.api.model.Folder
+import nl.giejay.android.tv.immich.api.model.Memory
+import nl.giejay.android.tv.immich.api.model.Partner
 import nl.giejay.android.tv.immich.api.model.Person
 import nl.giejay.android.tv.immich.api.model.SearchRequest
+import nl.giejay.android.tv.immich.api.model.UpdateAssetRequest
+import nl.giejay.android.tv.immich.api.model.SearchResponse
+import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
+import nl.giejay.android.tv.immich.api.model.TimelineAsset
+import nl.giejay.android.tv.immich.api.model.toTimelineAssets
 import nl.giejay.android.tv.immich.api.service.ApiService
 import nl.giejay.android.tv.immich.api.util.ApiUtil.executeAPICall
+import nl.giejay.android.tv.immich.shared.prefs.API_KEY
 import nl.giejay.android.tv.immich.shared.prefs.ContentType
+import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
+import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.EXCLUDE_ASSETS_IN_ALBUM
-import nl.giejay.android.tv.immich.shared.prefs.PhotosOrder
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.RECENT_ASSETS_MONTHS_BACK
+import nl.giejay.android.tv.immich.shared.prefs.SHOW_PARTNER_PHOTOS_IN_TIMELINE
 import nl.giejay.android.tv.immich.shared.prefs.SIMILAR_ASSETS_PERIOD_DAYS
 import nl.giejay.android.tv.immich.shared.prefs.SIMILAR_ASSETS_YEARS_BACK
 import nl.giejay.android.tv.immich.shared.util.Utils.pmap
-import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -34,7 +45,62 @@ data class ApiClientConfig(
     val apiKey: String,
     val disableSslVerification: Boolean,
     val debugMode: Boolean
+) {
+    companion object {
+        fun fromPrefs(): ApiClientConfig = ApiClientConfig(
+            PreferenceManager.hostName,
+            PreferenceManager.get(API_KEY),
+            PreferenceManager.get(DISABLE_SSL_VERIFICATION),
+            PreferenceManager.get(DEBUG_MODE)
+        )
+    }
+}
+
+// Immich rejects /search/metadata and /search/random requests with a size above 1000 (400 Bad Request)
+const val MAX_SEARCH_PAGE_SIZE = 1000
+
+// internal so app/src/test can call it directly without instantiating ApiClient/Retrofit
+internal fun buildListAssetsSearchRequest(
+    page: Int,
+    pageCount: Int,
+    albumIds: List<String>,
+    order: String,
+    type: String?,
+    personIds: List<UUID>,
+    endDate: String?,
+    fromDate: String?
+): SearchRequest = SearchRequest(
+    page = page,
+    size = pageCount,
+    albumIds = albumIds,
+    order = order,
+    type = type,
+    personIds = personIds,
+    takenBefore = endDate,
+    takenAfter = fromDate,
+    // "timeline" reproduces pre-v3 default for normal browsing; album-scoped search
+    // omits it so archived-in-album assets keep showing (VIS-02)
+    visibility = if (albumIds.isEmpty()) "timeline" else null
 )
+
+// internal so app/src/test can call it directly without instantiating ApiClient/Retrofit.
+// Server default for withPartners is false/omitted, so only send true when the user opted in -
+// issue #157: partner-shared photos never showed up in the Timeline because this was never wired up.
+internal fun resolveWithPartners(showPartnerPhotosInTimeline: Boolean): Boolean? {
+    return if (showPartnerPhotosInTimeline) true else null
+}
+
+// A partner's own timeline (userId set) must never send withPartners: the server would add all of
+// the caller's partners to the userId filter. The preference only applies to the own timeline.
+internal fun resolveTimelineWithPartners(userId: String?, showPartnerPhotosInTimeline: Boolean): Boolean? {
+    return if (userId != null) null else resolveWithPartners(showPartnerPhotosInTimeline)
+}
+
+internal fun SearchResponse.toAssetResponse(): AssetResponse =
+    AssetResponse(assets.items, assets.nextPage != null)
+
+internal fun List<Asset>.toRandomAssetResponse(): AssetResponse =
+    AssetResponse(this, true)
 
 class ApiClient(private val config: ApiClientConfig) {
     companion object ApiClient {
@@ -46,7 +112,11 @@ class ApiClient(private val config: ApiClientConfig) {
             return apiClient!!
         }
 
-        val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
+        // ISO_DATE_TIME on a zone-less LocalDateTime omits the offset entirely (e.g. "2026-07-04T14:30:00"),
+        // but Immich v3's takenBefore/takenAfter schema requires a mandatory trailing Z/offset
+        // (^...T...(?:Z|[+-]HH:mm)$) - v2 tolerated the offset-less form, v3's stricter validation
+        // rejects it with a 400. Attach the device's zone before formatting so the offset is always present.
+        val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
     }
 
     private val retrofit = Retrofit.Builder()
@@ -57,37 +127,74 @@ class ApiClient(private val config: ApiClientConfig) {
 
     private val service: ApiService = retrofit.create(ApiService::class.java)
 
-    suspend fun listAlbums(assetId: Option<String> = None): Either<String, List<Album>> {
-        return executeAPICall(200) { service.listAlbums(false, assetId.getOrNull()) }.flatMap { albums ->
-            return executeAPICall(200) { service.listAlbums(true, assetId.getOrNull()) }.map { sharedAlbums ->
-                albums + sharedAlbums
-            }
-        }
+    private suspend fun search(searchRequest: SearchRequest): Either<String, SearchResponse> {
+        return executeAPICall(200) { service.listAssets(searchRequest) }
     }
 
-    suspend fun listPeople(): Either<String, List<Person>> {
+    suspend fun listAlbums(assetId: Option<String> = None): Either<String, List<Album>> {
+        return executeAPICall(200) { service.listAlbums(assetId.getOrNull()) }
+    }
+
+    suspend fun getAlbum(albumId: String): Either<String, Album> {
+        return executeAPICall(200) { service.getAlbum(albumId) }
+    }
+
+    suspend fun listPeople():Either<String, List<Person>> {
         return executeAPICall(200) { service.listPeople() }.map { response -> response.people.filter { !it.name.isNullOrBlank() } }
     }
 
-    suspend fun listAssetsFromAlbum(albumId: String): Either<String, AlbumDetails> {
-        return executeAPICall(200) {
-            val response = service.listAssetsFromAlbum(albumId)
-            val album = response.body()
-            val assets = album!!.assets.filter(excludeByTag()).map { it.copy(albumName = album.albumName) }
-            Response.success(album.copy(assets = assets))
-        }
+    /** Users who share their library with the signed-in user, sorted by name. */
+    suspend fun listPartners(): Either<String, List<Partner>> {
+        return executeAPICall(200) { service.listPartners() }.map { partners -> partners.sortedBy { it.name.lowercase() } }
     }
 
-    suspend fun recentAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, List<Asset>> {
+    suspend fun listAssetsFromAlbum(albumIds: List<String>,
+                                    contentType: ContentType = ContentType.ALL,
+                                    pageCount: Int = 100): Either<String, AssetResponse> {
+        val results = albumIds.pmap { albumId ->
+            val album = executeAPICall(200) { service.getAlbum(albumId) }
+                .getOrElse { return@pmap Either.Left(it) }
+
+            val total = album.assetCount
+            val size = pageCount.coerceAtMost(MAX_SEARCH_PAGE_SIZE)
+            val numPages = (total + size - 1) / size
+            val pages = (1..numPages).toList()
+
+            val assetsResults = pages.pmap { page ->
+                search(SearchRequest(
+                    page = page,
+                    size = size,
+                    albumIds = listOf(albumId),
+                    type = if (contentType == ContentType.ALL) null else contentType.toString()
+                ))
+            }
+
+            val albumAssets = mutableListOf<Asset>()
+            for (res in assetsResults) {
+                val resp = res.getOrElse { return@pmap Either.Left(it) }
+                albumAssets.addAll(resp.assets.items)
+            }
+            Either.Right(albumAssets.toList())
+        }
+
+        val allAssets = mutableListOf<Asset>()
+        for (res in results) {
+            val assets = res.getOrElse { return Either.Left(it) }
+            allAssets.addAll(assets)
+        }
+        return Either.Right(AssetResponse(allAssets.filter(excludeByTag()), false))
+    }
+
+    suspend fun recentAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, AssetResponse> {
         val now = LocalDateTime.now()
         return listAssets(page, pageCount, true, "desc",
             contentType = contentType, fromDate = now.minusMonths(PreferenceManager.get(RECENT_ASSETS_MONTHS_BACK).toLong()), endDate = now)
-            .map { it.shuffled() }
+            .map { it.copy(assets = it.assets.shuffled()) }
     }
 
-    suspend fun similarAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, List<Asset>> {
+    suspend fun similarAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, AssetResponse> {
         val now = LocalDateTime.now()
-        val map: List<Either<String, List<Asset>>> = (0 until PreferenceManager.get(SIMILAR_ASSETS_YEARS_BACK)).toList().map {
+        val map: List<Either<String, AssetResponse>> = (0 until PreferenceManager.get(SIMILAR_ASSETS_YEARS_BACK)).toList().map {
             listAssets(page,
                 pageCount,
                 true,
@@ -99,7 +206,11 @@ class ApiClient(private val config: ApiClientConfig) {
         if (map.all { it.isLeft() }) {
             return map.first()
         }
-        return Either.Right(map.flatMap { it.getOrElse { emptyList() } }.shuffled())
+        val responses = map.mapNotNull { it.getOrNull() }
+        return Either.Right(AssetResponse(
+            responses.flatMap { it.assets }.shuffled(),
+            responses.any { it.canLoadMore }
+        ))
     }
 
     suspend fun listAssets(page: Int,
@@ -109,53 +220,33 @@ class ApiClient(private val config: ApiClientConfig) {
                            personIds: List<UUID> = emptyList(),
                            fromDate: LocalDateTime? = null,
                            endDate: LocalDateTime? = null,
-                           contentType: ContentType): Either<String, List<Asset>> {
-        val searchRequest = SearchRequest(page,
-            pageCount,
-            order,
-            // null for all content
-            if (contentType == ContentType.ALL) null else contentType.toString(),
-            personIds,
-            endDate?.format(dateTimeFormatter),
-            fromDate?.format(dateTimeFormatter))
-        return (if (random) {
-            executeAPICall(200) { service.randomAssets(searchRequest) }
+                           contentType: ContentType,
+                           albumIds: List<String> = emptyList()): Either<String, AssetResponse> {
+        val searchRequest = buildListAssetsSearchRequest(
+            page = page,
+            pageCount = pageCount,
+            albumIds = albumIds,
+            order = order,
+            type = if (contentType == ContentType.ALL) null else contentType.toString(),
+            personIds = personIds,
+            endDate = endDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter),
+            fromDate = fromDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter)
+        )
+        val assetsResult = if (random) {
+            // RandomSearchDto (POST /search/random) has no `page`/`order` properties at all -
+            // MetadataSearchDto is the only search DTO that supports pagination/ordering. Immich v3's
+            // stricter request validation rejects unknown properties with a 400, so they must be
+            // stripped here rather than sent as on the metadata-search path below.
+            executeAPICall(200) { service.randomAssets(searchRequest.copy(page = null, order = null)) }
+                .map { it.toRandomAssetResponse() }
         } else {
-            executeAPICall(200) { service.listAssets(searchRequest) }.map { res -> res.assets.items }
-        }).map { it.filter(excludeByTag()) }.map {
-            val excludedAlbums = PreferenceManager.get(EXCLUDE_ASSETS_IN_ALBUM)
-            if (excludedAlbums.isNotEmpty()) {
-                val excludedAssets =
-                    excludedAlbums.toList().flatMap { albumId -> listAssetsFromAlbum(albumId).getOrNull()?.assets ?: emptyList() }.map { it.id }
-                it.filterNot { asset -> excludedAssets.contains(asset.id) }
-            } else {
-                it
-            }
+            search(searchRequest).map { it.toAssetResponse() }
         }
+        return assetsResult
     }
 
     private fun excludeByTag() = { asset: Asset ->
         asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true
-    }
-
-    suspend fun listBuckets(albumId: String, order: PhotosOrder): Either<String, List<Bucket>> {
-        return executeAPICall(200) {
-            service.listBuckets(albumId = albumId, order = if (order == PhotosOrder.OLDEST_NEWEST) "asc" else "desc")
-        }
-    }
-
-    suspend fun getAssetsForBucket(albumId: String, bucket: String, order: PhotosOrder): Either<String, List<Asset>> {
-        val response = executeAPICall(200) {
-            service.getBucketV2(albumId = albumId, timeBucket = bucket, order = if (order == PhotosOrder.OLDEST_NEWEST) "asc" else "desc")
-        }.map {
-            it.id.pmap { t -> service.getAsset(t).body() }.filterNotNull().toList()
-        }
-        if (response.isLeft()) {
-            return executeAPICall(200) {
-                service.getBucket(albumId = albumId, timeBucket = bucket, order = if (order == PhotosOrder.OLDEST_NEWEST) "asc" else "desc")
-            }
-        }
-        return response
     }
 
     suspend fun listFolders(): Either<String, Folder> {
@@ -192,5 +283,54 @@ class ApiClient(private val config: ApiClientConfig) {
             service.getAssetsForPath(folder)
         }.map { it.filter(excludeByTag()) }
     }
-}
 
+    suspend fun getAsset(id: String): Either<String, Asset> {
+        return executeAPICall(200) { service.getAsset(id) }
+    }
+
+    suspend fun updateFavorite(id: String, isFavorite: Boolean): Either<String, Asset> {
+        return executeAPICall(200) {
+            service.updateAsset(id, UpdateAssetRequest(isFavorite))
+        }
+    }
+
+    /** @param userId another user's (partner's) timeline; null for the signed-in user's own. */
+    suspend fun getTimeBuckets(userId: String? = null): Either<String, List<TimeBucketSummary>> =
+        executeAPICall(200) {
+            service.getTimeBuckets(
+                withPartners = resolveTimelineWithPartners(userId, PreferenceManager.get(SHOW_PARTNER_PHOTOS_IN_TIMELINE)),
+                userId = userId
+            )
+        }
+
+    /**
+     * Fetches all assets for a month bucket.
+     *
+     * V1 gap: [excludeByTag] / EXCLUDE_ASSETS_IN_ALBUM cannot apply here — bucket responses
+     * omit tags and album membership. Filtering those requires a follow-up ID set cross-check.
+     */
+    suspend fun getTimeBucket(timeBucket: String, userId: String? = null): Either<String, List<TimelineAsset>> =
+        executeAPICall(200) {
+            service.getTimeBucket(
+                timeBucket,
+                withPartners = resolveTimelineWithPartners(userId, PreferenceManager.get(SHOW_PARTNER_PHOTOS_IN_TIMELINE)),
+                userId = userId
+            )
+        }.map { it.toTimelineAssets() }
+
+    /** "On this day" style memories for the current moment (server filters by day-of-year). */
+    suspend fun getMemories(): Either<String, List<Memory>> {
+        val date = LocalDate.now().toString()
+        return executeAPICall(200) { service.getMemories(date) }.fold(
+            { error ->
+                if (error.contains("(400)")) {
+                    val isoDate = OffsetDateTime.now().format(dateTimeFormatter)
+                    executeAPICall(200) { service.getMemories(isoDate) }
+                } else {
+                    Either.Left(error)
+                }
+            },
+            { Either.Right(it) }
+        )
+    }
+}

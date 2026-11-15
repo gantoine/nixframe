@@ -18,8 +18,12 @@ package nl.giejay.android.tv.immich
 import android.app.Application
 import android.content.Context
 import android.os.Handler
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.multidex.MultiDex
 import nl.giejay.android.tv.immich.api.util.Tls12SocketFactory
+import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.sensors.ActivitySensor
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.USER_ID
@@ -46,6 +50,8 @@ class ImmichApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // AppContextInitializer (initOrder set higher than Firebase's) sets this first;
+        // kept as a cheap no-op for direct Application construction.
         appContext = this
         // Install Conscrypt as the top security provider so KitKat can negotiate modern TLS
         // (AEAD ciphers / TLS 1.3) with current HTTPS servers — the platform stack cannot.
@@ -74,6 +80,14 @@ class ImmichApplication : Application() {
 
         // Start polling the (Nixplay) motion sensor to drive the display wakelock.
         this.mainHandler.post(sensorServiceRunnable)
+
+        // Android TV home-screen channels: no-ops below API 26 (O), so inert on KitKat frames.
+        HomeScreenChannelManager.initSubscriptions()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                HomeScreenChannelManager.scheduleRefresh("app_foreground")
+            }
+        })
     }
 
     companion object {

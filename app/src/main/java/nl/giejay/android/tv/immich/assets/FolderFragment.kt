@@ -1,9 +1,9 @@
 package nl.giejay.android.tv.immich.assets
 
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import arrow.core.Either
 import arrow.core.getOrElse
-import nl.giejay.mediaslider.model.MetaDataType
 import kotlinx.coroutines.launch
 import nl.giejay.android.tv.immich.album.AlbumDetailsFragmentDirections
 import nl.giejay.android.tv.immich.api.ApiClient
@@ -11,22 +11,28 @@ import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.api.model.Folder
 import nl.giejay.android.tv.immich.card.Card
 import nl.giejay.android.tv.immich.shared.fragment.VerticalCardGridFragment
-import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ANIMATE_ASSET_SLIDE
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ANIMATION_SPEED
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_GLIDE_TRANSFORMATION
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_INTERVAL
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MAX_CUT_OFF_HEIGHT
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MAX_CUT_OFF_WIDTH
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MERGE_PORTRAIT_PHOTOS
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHUFFLE
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ONLY_USE_THUMBNAILS
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_PAN_EFFECT
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_EFFECT
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_SCROLL_PANORAMAS
 import nl.giejay.android.tv.immich.shared.util.toCard
 import nl.giejay.android.tv.immich.shared.util.toSliderItems
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
-import java.util.EnumSet
+import nl.giejay.mediaslider.util.LoadMoreResult
+import nl.giejay.mediaslider.viewmodel.MediaSliderViewModel
 
 data class Item(val item: Any) {
     fun isAsset() = item is Asset
@@ -38,12 +44,13 @@ data class Item(val item: Any) {
 class FolderFragment : VerticalCardGridFragment<Item>() {
     private var rootFolder: Folder? = null
     private var stack = mutableListOf<Folder>()
+    private val sliderViewModel: MediaSliderViewModel by activityViewModels()
 
     override fun sortItems(items: List<Item>): List<Item> {
         return items.sortedWith({ i, i2 ->
             if (!i.isAsset() && !i2.isAsset() || (i.isAsset() && i2.isAsset())) {
                 // both folders or both items
-                i.name()!!.compareTo(i2.name()!!)
+                i2.name()?.let { i.name()?.compareTo(it) } ?: 0
             } else if (!i.isAsset()) {
                 // i is folder, i2 is asset, precedence for folder
                 -1
@@ -86,26 +93,31 @@ class FolderFragment : VerticalCardGridFragment<Item>() {
         } else {
             val findAllAssets = this.assets.filter { it.item is Asset }.map { it.item as Asset }
             val sliderItems = findAllAssets.toSliderItems(keepOrder = !PreferenceManager.get(SLIDER_SHUFFLE), mergePortrait = PreferenceManager.get(SLIDER_MERGE_PORTRAIT_PHOTOS))
+            val config = MediaSliderConfiguration(
+                sliderItems.indexOfFirst { it.ids().contains(card.id) },
+                PreferenceManager.get(SLIDER_INTERVAL),
+                PreferenceManager.get(SLIDER_ONLY_USE_THUMBNAILS),
+                isVideoSoundEnable = true,
+                sliderItems,
+                { LoadMoreResult(emptyList(), false) },
+                { item -> manualUpdatePosition(this.assets.indexOfFirst { item.ids().contains(it.id) }) },
+                animationSpeedMillis = PreferenceManager.get(SLIDER_ANIMATION_SPEED),
+                maxCutOffHeight = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
+                maxCutOffWidth = PreferenceManager.get(SLIDER_MAX_CUT_OFF_WIDTH),
+                glideTransformation = PreferenceManager.get(SLIDER_GLIDE_TRANSFORMATION),
+                enableSlideAnimation = PreferenceManager.get(SCREENSAVER_ANIMATE_ASSET_SLIDE),
+                gradiantOverlay = false,
+                metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER),
+                zoomAndScrollPanorama = PreferenceManager.get(SLIDER_ZOOM_SCROLL_PANORAMAS),
+                zoomEffectPercent = PreferenceManager.get(SLIDER_ZOOM_EFFECT),
+                panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
+                useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
+                dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
+                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
+            )
+            sliderViewModel.configuration = config
             findNavController().navigate(
-                AlbumDetailsFragmentDirections.actionToPhotoSlider(
-                    MediaSliderConfiguration(
-                        sliderItems.indexOfFirst { it.ids().contains(card.id) },
-                        PreferenceManager.get(SLIDER_INTERVAL),
-                        PreferenceManager.get(SLIDER_ONLY_USE_THUMBNAILS),
-                        isVideoSoundEnable = true,
-                        sliderItems,
-                        { listOf() },
-                        { item -> manualUpdatePosition(this.assets.indexOfFirst { item.ids().contains(it.id) }) },
-                        animationSpeedMillis = PreferenceManager.get(SLIDER_ANIMATION_SPEED),
-                        maxCutOffHeight = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
-                        maxCutOffWidth = PreferenceManager.get(SLIDER_MAX_CUT_OFF_WIDTH),
-                        transformation = PreferenceManager.get(SLIDER_GLIDE_TRANSFORMATION),
-                        debugEnabled = PreferenceManager.get(DEBUG_MODE),
-                        enableSlideAnimation = PreferenceManager.get(SCREENSAVER_ANIMATE_ASSET_SLIDE),
-                        gradiantOverlay = false,
-                        metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER)
-                    )
-                )
+                AlbumDetailsFragmentDirections.actionToPhotoSlider()
             )
         }
     }

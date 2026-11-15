@@ -3,6 +3,7 @@ package nl.giejay.android.tv.immich.settings
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import androidx.leanback.app.RowsSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -15,6 +16,7 @@ import nl.giejay.android.tv.immich.ImmichApplication
 import nl.giejay.android.tv.immich.R
 import nl.giejay.android.tv.immich.home.HomeFragmentDirections
 import nl.giejay.android.tv.immich.shared.prefs.DebugPrefScreen
+import nl.giejay.android.tv.immich.shared.prefs.HomeScreenChannelsPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ScreensaverPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ViewPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.WeatherPrefScreen
@@ -87,6 +89,19 @@ class SettingsFragment : RowsSupportFragment() {
                         ) {
                             findNavController().navigate(
                                 HomeFragmentDirections.actionGlobalToSettingsDialog(WeatherPrefScreen.key)
+                            )
+                        },
+                        SettingsCard(
+                            ImmichApplication.appContext!!.getString(R.string.home_screen_channels),
+                            null,
+                            "home_screen_channels",
+                            "ic_home_channels",
+                            "ic_home_channels",
+                            // Android TV home-screen channels need API 26 (O); hidden on KitKat frames.
+                            visible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        ) {
+                            findNavController().navigate(
+                                HomeFragmentDirections.actionGlobalToSettingsDialog(HomeScreenChannelsPrefScreen.key)
                             )
                         },
                         SettingsCard(

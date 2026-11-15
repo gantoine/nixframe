@@ -7,6 +7,7 @@ import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.load.resource.bitmap.TransformationUtils
 import com.bumptech.glide.request.target.Target
+import timber.log.Timber
 import java.security.MessageDigest
 
 /**
@@ -15,8 +16,7 @@ import java.security.MessageDigest
  * against the real target slot (outWidth/outHeight), which correctly handles display rotation and
  * the merged-portrait half-width slots; screen metrics are only used as a fallback.
  */
-class OrientationAwareCenterCrop(context: Context,
-                                 private val transformResult: (String) -> Unit) : BitmapTransformation() {
+class OrientationAwareCenterCrop(context: Context) : BitmapTransformation() {
     private val screenWidth: Int
     private val screenHeight: Int
 
@@ -38,10 +38,10 @@ class OrientationAwareCenterCrop(context: Context,
         val slotIsLandscape = slotWidth >= slotHeight
 
         return if (imageIsLandscape == slotIsLandscape) {
-            transformResult("Orientation matches slot, cropping to fill")
+            Timber.i("Orientation matches slot, cropping to fill")
             TransformationUtils.centerCrop(pool, toTransform, outWidth, outHeight)
         } else {
-            transformResult("Orientation differs from slot, letterboxing")
+            Timber.i("Orientation differs from slot, letterboxing")
             toTransform
         }
     }
