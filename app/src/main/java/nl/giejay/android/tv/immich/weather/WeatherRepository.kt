@@ -90,6 +90,7 @@ object WeatherRepository {
                 locationName = name,
                 currentTemp = current.temperature.roundToInt(),
                 currentCode = current.weatherCode,
+                isDay = current.isDay != 0,
                 unitSymbol = if (useFahrenheit) "°F" else "°C",
                 days = days,
                 humidity = current.humidity,

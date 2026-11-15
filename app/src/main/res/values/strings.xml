@@ -289,6 +289,8 @@
     <string name="weather_uv">UV index</string>
     <string name="weather_pressure">Pressure</string>
     <string name="weather_aqi">Air (AQI)</string>
+    <string name="weather_air_quality">Air quality</string>
+    <string name="weather_forecast_header">%1$d-day forecast</string>
     <string name="weather_error">Could not load weather. Check the location and network.</string>
 
     <!-- Ordering -->

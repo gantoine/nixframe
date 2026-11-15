@@ -370,16 +370,24 @@
         <item name="colorAccent">@color/progressbarColor</item>
     </style>
 
-    <!-- White text with a strong shadow so it stays readable directly over a photo. -->
+    <!-- White text with a soft shadow: enough lift over bright clouds without looking embossed. -->
     <style name="WeatherText">
         <item name="android:textColor">#FFFFFFFF</item>
-        <item name="android:shadowColor">#FF000000</item>
-        <item name="android:shadowRadius">10</item>
+        <item name="android:shadowColor">#59000000</item>
+        <item name="android:shadowRadius">6</item>
         <item name="android:shadowDx">0</item>
-        <item name="android:shadowDy">4</item>
+        <item name="android:shadowDy">1</item>
     </style>
 
     <style name="WeatherTextSecondary" parent="WeatherText">
-        <item name="android:textColor">#E6FFFFFF</item>
+        <item name="android:textColor">#CCFFFFFF</item>
+    </style>
+
+    <!-- Small caps label used for panel headers and stat tiles (letterSpacing is API 21+, so none). -->
+    <style name="WeatherLabel" parent="WeatherText">
+        <item name="android:textColor">#A6FFFFFF</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
     </style>
 </resources>

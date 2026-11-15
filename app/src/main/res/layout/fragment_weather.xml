@@ -6,7 +6,7 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
 
-    <!-- Full-bleed animated weather effects, behind the scrim-tinted content. -->
+    <!-- Full-bleed animated sky (clouds, rain, snow…) behind the content. -->
     <nl.giejay.android.tv.immich.weather.WeatherAnimationView
         android:id="@+id/weather_animation"
         android:layout_width="match_parent"
@@ -20,100 +20,130 @@
         android:layout_gravity="center"
         android:textSize="28sp" />
 
+    <!-- Two columns: current conditions + stat tiles on the left, the forecast panel on the right. -->
     <LinearLayout
         android:id="@+id/weather_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="40dp"
+        android:orientation="horizontal"
+        android:paddingStart="44dp"
+        android:paddingTop="34dp"
+        android:paddingEnd="36dp"
+        android:paddingBottom="36dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/weather_location"
-            style="@style/WeatherText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="40sp" />
-
-        <!-- Hero: stats | icon + temp | stats. Weights 1:3:1 mirror the 5-column forecast row below,
-             so the side stats land in the same columns as the first/last forecast days. -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <!-- Left-side stats (precipitation, humidity) -->
-            <LinearLayout
-                android:id="@+id/stats_left"
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/weather_location"
+                style="@style/WeatherText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:orientation="vertical" />
+                android:fontFamily="sans-serif"
+                android:textSize="32sp" />
 
-            <!-- Center: big icon + temperature -->
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/weather_date"
+                style="@style/WeatherTextSecondary"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="3"
-                android:gravity="center"
+                android:fontFamily="sans-serif-light"
+                android:textSize="19sp" />
+
+            <!-- Hero temperature: oversized, thin. -->
+            <TextView
+                android:id="@+id/current_temp"
+                style="@style/WeatherText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="-8dp"
+                android:layout_marginTop="6dp"
+                android:fontFamily="sans-serif-thin"
+                android:includeFontPadding="false"
+                android:textSize="148sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <ImageView
                     android:id="@+id/current_icon"
-                    android:layout_width="128dp"
-                    android:layout_height="128dp"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
                     android:contentDescription="@string/weather" />
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/current_condition"
+                    style="@style/WeatherText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/current_temp"
-                        style="@style/WeatherText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="88sp" />
-
-                    <TextView
-                        android:id="@+id/current_condition"
-                        style="@style/WeatherText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:textSize="36sp" />
-
-                    <TextView
-                        android:id="@+id/current_hilo"
-                        style="@style/WeatherTextSecondary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:textSize="28sp" />
-                </LinearLayout>
+                    android:layout_marginStart="10dp"
+                    android:fontFamily="sans-serif-light"
+                    android:textSize="30sp" />
             </LinearLayout>
 
-            <!-- Right-side stats (UV, AQI) -->
-            <LinearLayout
-                android:id="@+id/stats_right"
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/current_hilo"
+                style="@style/WeatherTextSecondary"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:orientation="vertical" />
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-light"
+                android:textSize="21sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- 2x2 stat tiles, filled in code. -->
+            <LinearLayout
+                android:id="@+id/stats_row_top"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+            <LinearLayout
+                android:id="@+id/stats_row_bottom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal" />
         </LinearLayout>
 
-        <!-- Forecast -->
+        <!-- Forecast panel. Top margin keeps it clear of the browse title ("Weather") in the corner. -->
         <LinearLayout
-            android:id="@+id/forecast_row"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="horizontal" />
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="28dp"
+            android:layout_marginTop="66dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_weather_glass"
+            android:orientation="vertical"
+            android:paddingStart="22dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="22dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/forecast_header"
+                style="@style/WeatherLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="" />
+
+            <LinearLayout
+                android:id="@+id/forecast_row"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="vertical" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

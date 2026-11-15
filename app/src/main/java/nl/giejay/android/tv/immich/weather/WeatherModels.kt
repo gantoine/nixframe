@@ -27,7 +27,9 @@ data class CurrentWeather(
     @SerializedName("relative_humidity_2m") val humidity: Int? = null,
     @SerializedName("precipitation") val precipitation: Double? = null,
     @SerializedName("wind_speed_10m") val windSpeed: Double? = null,
-    @SerializedName("surface_pressure") val pressure: Double? = null
+    @SerializedName("surface_pressure") val pressure: Double? = null,
+    /** 1 during daylight at the location, 0 at night. */
+    @SerializedName("is_day") val isDay: Int? = null
 )
 
 data class HourlyWeather(
@@ -54,6 +56,7 @@ data class Weather(
     val locationName: String,
     val currentTemp: Int,
     val currentCode: Int,
+    val isDay: Boolean = true,
     val unitSymbol: String,
     val days: List<DailyForecast>,
     val humidity: Int?,

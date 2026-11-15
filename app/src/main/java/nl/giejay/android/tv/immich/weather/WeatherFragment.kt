@@ -1,5 +1,7 @@
 package nl.giejay.android.tv.immich.weather
 
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -19,6 +21,7 @@ import nl.giejay.android.tv.immich.shared.prefs.WEATHER_ANIMATED_BACKGROUND
 import nl.giejay.android.tv.immich.shared.prefs.WEATHER_LOCATION
 import nl.giejay.android.tv.immich.shared.prefs.WEATHER_USE_FAHRENHEIT
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class WeatherFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterProvider {
@@ -67,7 +70,7 @@ class WeatherFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     }
 
     private fun bind(view: View, weather: Weather) {
-        val scene = WeatherCode.scene(weather.currentCode)
+        val scene = WeatherCode.scene(weather.currentCode, weather.isDay)
         view.background = backgroundFor(scene)
 
         val animation = view.findViewById<WeatherAnimationView>(R.id.weather_animation)
@@ -77,24 +80,34 @@ class WeatherFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
         )
 
         view.findViewById<TextView>(R.id.weather_location).text = weather.locationName
-        view.findViewById<TextView>(R.id.current_temp).text = "${weather.currentTemp}${weather.unitSymbol}"
+        view.findViewById<TextView>(R.id.weather_date).text =
+            SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date())
+        // The unit is implied by the settings; the hero reads cleaner as just "5°".
+        view.findViewById<TextView>(R.id.current_temp).text = "${weather.currentTemp}°"
         view.findViewById<TextView>(R.id.current_condition).text = WeatherCode.description(weather.currentCode)
         view.findViewById<ImageView>(R.id.current_icon)
-            .setImageDrawable(AppCompatResources.getDrawable(requireContext(), WeatherCode.iconRes(weather.currentCode)))
+            .setImageDrawable(AppCompatResources.getDrawable(requireContext(), WeatherCode.iconRes(weather.currentCode, weather.isDay)))
         weather.days.firstOrNull()?.let { today ->
-            view.findViewById<TextView>(R.id.current_hilo).text = "H ${today.high}°  L ${today.low}°"
+            view.findViewById<TextView>(R.id.current_hilo).text = "H ${today.high}°   L ${today.low}°"
         }
 
         val inflater = LayoutInflater.from(requireContext())
+        val gap = (12 * resources.displayMetrics.density).toInt()
 
-        val statsLeft = view.findViewById<LinearLayout>(R.id.stats_left)
-        val statsRight = view.findViewById<LinearLayout>(R.id.stats_right)
-        statsLeft.removeAllViews()
-        statsRight.removeAllViews()
-        val statGap = (72 * resources.displayMetrics.density).toInt()
-        fun addStat(column: LinearLayout, value: String?, label: String, level: String? = null, levelColor: Int = 0) {
+        val rows = listOf(
+            view.findViewById<LinearLayout>(R.id.stats_row_top),
+            view.findViewById<LinearLayout>(R.id.stats_row_bottom)
+        )
+        rows.forEach { it.removeAllViews() }
+        var statCount = 0
+        fun addStat(iconRes: Int, value: String?, label: String, level: String? = null, levelColor: Int = 0) {
             if (value == null) return
-            val item = inflater.inflate(R.layout.weather_stat, column, false)
+            val row = rows[statCount / 2]
+            val item = inflater.inflate(R.layout.weather_stat, row, false)
+            item.findViewById<ImageView>(R.id.stat_icon).apply {
+                setImageDrawable(AppCompatResources.getDrawable(requireContext(), iconRes))
+                setColorFilter(Color.WHITE)
+            }
             item.findViewById<TextView>(R.id.stat_value).text = value
             item.findViewById<TextView>(R.id.stat_label).text = label
             if (level != null) {
@@ -104,48 +117,67 @@ class WeatherFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
                     visibility = View.VISIBLE
                 }
             }
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            if (column.childCount > 0) lp.topMargin = statGap
-            item.layoutParams = lp
-            column.addView(item)
+            if (row.childCount > 0) (item.layoutParams as LinearLayout.LayoutParams).leftMargin = gap
+            row.addView(item)
+            statCount++
         }
-        addStat(statsLeft, weather.humidity?.let { "$it%" }, getString(R.string.weather_humidity))
-        addStat(statsLeft, weather.precipitation?.let { "$it ${weather.precipUnit}" }, getString(R.string.weather_precipitation))
+        addStat(R.drawable.ic_stat_drop, weather.humidity?.let { "$it%" }, getString(R.string.weather_humidity))
+        addStat(R.drawable.ic_stat_umbrella, weather.precipitation?.let { "$it ${weather.precipUnit}" },
+            getString(R.string.weather_precipitation))
         weather.uvIndex?.let { uv ->
             val (level, color) = uvLevel(uv)
-            addStat(statsRight, "$uv", getString(R.string.weather_uv), level, color)
+            addStat(R.drawable.ic_weather_sun, "$uv", getString(R.string.weather_uv), level, color)
         }
         weather.aqi?.let { aqi ->
             val (level, color) = aqiLevel(aqi)
-            addStat(statsRight, "$aqi", getString(R.string.weather_aqi), level, color)
+            addStat(R.drawable.ic_stat_wind, "$aqi", getString(R.string.weather_air_quality), level, color)
         }
+        rows[1].visibility = if (statCount > 2) View.VISIBLE else View.GONE
 
-        val row = view.findViewById<LinearLayout>(R.id.forecast_row)
-        row.removeAllViews()
+        view.findViewById<TextView>(R.id.forecast_header).text =
+            getString(R.string.weather_forecast_header, weather.days.size)
+        val fahrenheit = weather.unitSymbol == "°F"
+        val weekMin = weather.days.minOfOrNull { it.low } ?: 0
+        val weekMax = weather.days.maxOfOrNull { it.high } ?: 0
+        val list = view.findViewById<LinearLayout>(R.id.forecast_row)
+        list.removeAllViews()
         weather.days.forEachIndexed { index, day ->
-            val item = inflater.inflate(R.layout.weather_day_item, row, false)
-            item.findViewById<TextView>(R.id.day_name).text =
-                if (index == 0) getString(R.string.weather_today) else dayName(day.date)
+            if (index > 0) {
+                list.addView(View(requireContext()).apply { setBackgroundColor(0x1FFFFFFF) },
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
+            }
+            val item = inflater.inflate(R.layout.weather_day_item, list, false)
+            item.findViewById<TextView>(R.id.day_name).apply {
+                text = if (index == 0) getString(R.string.weather_today) else dayName(day.date)
+                if (index == 0) setTypeface(typeface, Typeface.BOLD)
+            }
             item.findViewById<ImageView>(R.id.day_icon)
                 .setImageDrawable(AppCompatResources.getDrawable(requireContext(), WeatherCode.iconRes(day.code)))
-            item.findViewById<TextView>(R.id.day_hilo).text = "${day.high}° / ${day.low}°"
-            row.addView(item)
+            item.findViewById<TextView>(R.id.day_low).text = "${day.low}°"
+            item.findViewById<TextView>(R.id.day_high).text = "${day.high}°"
+            item.findViewById<TempRangeBar>(R.id.day_bar).set(
+                weekMin, weekMax, day.low, day.high,
+                if (index == 0) weather.currentTemp else null, fahrenheit
+            )
+            list.addView(item)
         }
     }
 
-    /** A vertical gradient tinted to the current conditions (warm for clear, cool for cloud/rain). */
+    /**
+     * A vertical three-stop sky gradient tinted to the current conditions — lighter where the light
+     * comes from (top), deepening toward the bottom so the panels and text keep their contrast.
+     */
     private fun backgroundFor(scene: WeatherAnimationView.Scene): GradientDrawable {
         val colors = when (scene) {
-            WeatherAnimationView.Scene.CLEAR -> intArrayOf(0xFF6B3B28.toInt(), 0xFFB06A40.toInt())
-            WeatherAnimationView.Scene.CLOUDS -> intArrayOf(0xFF2A313C.toInt(), 0xFF454F5E.toInt())
-            WeatherAnimationView.Scene.RAIN -> intArrayOf(0xFF1F2832.toInt(), 0xFF354554.toInt())
-            WeatherAnimationView.Scene.SNOW -> intArrayOf(0xFF2E3742.toInt(), 0xFF4C5965.toInt())
-            WeatherAnimationView.Scene.FOG -> intArrayOf(0xFF2B2E33.toInt(), 0xFF474B52.toInt())
-            WeatherAnimationView.Scene.THUNDER -> intArrayOf(0xFF181B22.toInt(), 0xFF2C313D.toInt())
-            else -> intArrayOf(0xFF14161A.toInt(), 0xFF24272E.toInt())
+            WeatherAnimationView.Scene.CLEAR -> intArrayOf(0xFF2F72C2.toInt(), 0xFF275C9E.toInt(), 0xFF16305A.toInt())
+            WeatherAnimationView.Scene.PARTLY -> intArrayOf(0xFF4F80B6.toInt(), 0xFF3A6597.toInt(), 0xFF1C3253.toInt())
+            WeatherAnimationView.Scene.CLEAR_NIGHT -> intArrayOf(0xFF0B1734.toInt(), 0xFF12224A.toInt(), 0xFF090F22.toInt())
+            WeatherAnimationView.Scene.CLOUDS -> intArrayOf(0xFF5D6E82.toInt(), 0xFF46546A.toInt(), 0xFF242C3A.toInt())
+            WeatherAnimationView.Scene.RAIN -> intArrayOf(0xFF33404F.toInt(), 0xFF263240.toInt(), 0xFF121922.toInt())
+            WeatherAnimationView.Scene.SNOW -> intArrayOf(0xFF46566B.toInt(), 0xFF364558.toInt(), 0xFF1B2433.toInt())
+            WeatherAnimationView.Scene.FOG -> intArrayOf(0xFF59616B.toInt(), 0xFF464D56.toInt(), 0xFF23282F.toInt())
+            WeatherAnimationView.Scene.THUNDER -> intArrayOf(0xFF1D2230.toInt(), 0xFF161A25.toInt(), 0xFF0B0E14.toInt())
+            else -> intArrayOf(0xFF14161A.toInt(), 0xFF1C1F24.toInt(), 0xFF24272E.toInt())
         }
         return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors)
     }

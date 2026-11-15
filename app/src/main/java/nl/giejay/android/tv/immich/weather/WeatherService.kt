@@ -12,7 +12,7 @@ interface OpenMeteoForecastService {
         @Query("wind_speed_unit") windSpeedUnit: String,
         @Query("precipitation_unit") precipitationUnit: String,
         @Query("current") current: String =
-            "temperature_2m,weather_code,relative_humidity_2m,precipitation,wind_speed_10m,surface_pressure",
+            "temperature_2m,weather_code,relative_humidity_2m,precipitation,wind_speed_10m,surface_pressure,is_day",
         // Hourly precipitation lets us read the current *hour's* rainfall — current.precipitation is
         // only the preceding 15-minute bucket and reads 0 even when it's actively raining.
         @Query("hourly") hourly: String = "precipitation,precipitation_probability",
