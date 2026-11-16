@@ -3,6 +3,7 @@ package nl.giejay.android.tv.immich.homeassistant
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.ImageView
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,14 +32,19 @@ class HaImageLoader(
         else -> null
     }
 
-    fun load(path: String, into: ImageView, targetWidthPx: Int) {
+    fun load(path: String, into: ImageView, targetWidthPx: Int, circle: Boolean = false) {
         val url = resolve(path) ?: return
         val httpUrl = HttpUrl.parse(url) ?: return
         into.setTag(TAG_KEY, path)
         scope.launch {
             val bitmap = withContext(Dispatchers.IO) { fetch(httpUrl, targetWidthPx) } ?: return@launch
             // the view may have been re-pointed at another image meanwhile
-            if (into.getTag(TAG_KEY) == path) into.setImageBitmap(bitmap)
+            if (into.getTag(TAG_KEY) != path) return@launch
+            if (circle) {
+                into.setImageDrawable(RoundedBitmapDrawableFactory.create(into.resources, bitmap).apply { isCircular = true })
+            } else {
+                into.setImageBitmap(bitmap)
+            }
         }
     }
 

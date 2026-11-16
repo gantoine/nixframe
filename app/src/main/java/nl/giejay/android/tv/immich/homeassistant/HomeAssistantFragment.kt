@@ -244,7 +244,10 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
             }?.let { dashboardSubscriptions += it }
         }
         r.templates.forEach { t ->
-            val fields = JsonObject().apply { addProperty("template", t.template) }
+            val fields = JsonObject().apply {
+                addProperty("template", t.template)
+                t.variables?.let { add("variables", it) }
+            }
             conn.subscribe("render_template", fields) { event ->
                 event.get("result")?.let { t.onResult(if (it.isJsonPrimitive) it.asString else it.toString()) }
             }?.let { dashboardSubscriptions += it }

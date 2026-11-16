@@ -43,7 +43,7 @@ class LovelaceRenderer(
     val entityIds = LinkedHashSet<String>()
 
     class ForecastRequest(val entityId: String, val type: String, val onForecast: (JsonArray) -> Unit)
-    class TemplateRequest(val template: String, val onResult: (String) -> Unit)
+    class TemplateRequest(val template: String, val variables: JsonObject? = null, val onResult: (String) -> Unit)
     class HistoryRequest(val entityIds: List<String>, val hours: Int, val onHistory: (Map<String, List<Pair<Double, Double>>>, Double, Double) -> Unit)
 
     val forecasts = mutableListOf<ForecastRequest>()
@@ -146,7 +146,8 @@ class LovelaceRenderer(
             used += span
         }
         // pad the last row so a lone half-width tile stays half width
-        row?.let { if (used in 1..11) it.addView(View(context), LinearLayout.LayoutParams(0, 1, (12 - used).toFloat())) }
+        // MATCH_PARENT like the cards: a fixed-height filler makes LinearLayout size the whole row to it
+        row?.let { if (used in 1..11) it.addView(View(context), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, (12 - used).toFloat())) }
         return box
     }
 
@@ -161,7 +162,12 @@ class LovelaceRenderer(
         }
         return when (cfg.str("type")) {
             "tile", "button" -> 6
-            else -> 12
+            "custom:mushroom-chips-card", "custom:mushroom-title-card" -> 12
+            "custom:bubble-card" -> when (cfg.str("card_type")) {
+                "separator", "media-player", "horizontal-buttons-stack", "pop-up" -> 12
+                else -> 6
+            }
+            else -> if (cfg.str("type")?.startsWith("custom:mushroom-") == true) 6 else 12
         }
     }
 
@@ -192,7 +198,8 @@ class LovelaceRenderer(
                 "grid" -> gridCard(cfg, widthPx)
                 "conditional" -> conditionalCard(cfg, widthPx)
                 "entity-filter" -> entityFilterCard(cfg)
-                else -> fallbackCard(cfg)
+                "custom:bubble-card" -> bubbleCard(cfg)
+                else -> mushroomCard(cfg, widthPx) ?: fallbackCard(cfg)
             }
         } catch (e: Exception) {
             timber.log.Timber.w(e, "Could not render %s card", cfg.str("type"))
@@ -844,7 +851,7 @@ class LovelaceRenderer(
                     if (i > 0) leftMargin = gap
                 })
             }
-            repeat(columns - chunk.size) { row.addView(View(context), LinearLayout.LayoutParams(0, 1, 1f).apply { leftMargin = gap }) }
+            repeat(columns - chunk.size) { row.addView(View(context), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { leftMargin = gap }) }
             box.addView(row, matchWrap(top = if (r > 0) 8 else 0))
         }
         return box
@@ -921,12 +928,440 @@ class LovelaceRenderer(
         }
     }
 
+    // ---- Mushroom (custom:mushroom-*) ---------------------------------------------------------
+    // The frame can't run Mushroom's JavaScript, so its cards are drawn natively in the same
+    // visual language: a tinted circular icon "shape", a primary line and a secondary line.
+
+    private fun mushroomCard(cfg: JsonObject, widthPx: Int): View? {
+        val type = cfg.str("type")?.takeIf { it.startsWith("custom:mushroom-") } ?: return null
+        return when (type.removePrefix("custom:mushroom-").removeSuffix("-card")) {
+            "template" -> mushroomTemplateCard(cfg)
+            "title" -> mushroomTitleCard(cfg)
+            "chips" -> mushroomChipsCard(cfg)
+            "media-player" -> mediaCard(cfg, widthPx)
+            "empty" -> View(context)
+            else -> mushroomEntityCard(cfg) // entity, light, fan, cover, climate, lock, person, ...
+        }
+    }
+
+    /** Mushroom's icon "shape": a tinted circle holding an icon or a round entity picture. */
+    private inner class MushroomShape(val sizeDp: Int) {
+        val view = FrameLayout(context)
+        private val background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        private val icon = MdiIcons.view(context, sizeDp * 0.55f, HaFormat.COLOR_INACTIVE)
+        private val picture = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = View.GONE
+        }
+
+        init {
+            view.background = background
+            view.addView(icon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            view.addView(picture, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+
+        fun color(c: Int) {
+            icon.setTextColor(c)
+            background.setColor(withAlpha(c, if (c == HaFormat.COLOR_INACTIVE) 0x1F else 0x38))
+        }
+
+        fun icon(name: String?) {
+            picture.visibility = View.GONE
+            icon.visibility = View.VISIBLE
+            MdiIcons.set(icon, name)
+        }
+
+        fun picture(path: String) {
+            icon.visibility = View.GONE
+            picture.visibility = View.VISIBLE
+            if (picture.getTag(R.id.ha_image_path) != path) images.load(path, picture, dp(sizeDp), circle = true)
+        }
+    }
+
+    private class MushroomParts(val card: LinearLayout, val shape: MushroomShape, val primary: TextView, val secondary: TextView)
+
+    private fun mushroomBase(verticalLayout: Boolean): MushroomParts {
+        val card = (if (verticalLayout) vertical() else horizontal()).apply {
+            gravity = if (verticalLayout) Gravity.CENTER_HORIZONTAL else Gravity.CENTER_VERTICAL
+            background = glass()
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            minimumHeight = dp(62)
+        }
+        val shape = MushroomShape(if (verticalLayout) 42 else 38)
+        card.addView(shape.view, LinearLayout.LayoutParams(dp(shape.sizeDp), dp(shape.sizeDp)))
+        val texts = vertical().apply { if (verticalLayout) gravity = Gravity.CENTER_HORIZONTAL }
+        val primary = text(14f, Color.WHITE, bold = true)
+        val secondary = text(13f, SECONDARY)
+        if (verticalLayout) {
+            primary.gravity = Gravity.CENTER
+            secondary.gravity = Gravity.CENTER
+        }
+        texts.addView(primary, wrap())
+        texts.addView(secondary, wrap(top = 3))
+        card.addView(texts, if (verticalLayout) wrap(top = 8)
+            else LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(10) })
+        return MushroomParts(card, shape, primary, secondary)
+    }
+
+    private fun mushroomEntityCard(cfg: JsonObject): View {
+        val id = cfg.str("entity") ?: return fallbackCard(cfg)
+        val parts = mushroomBase(cfg.str("layout") == "vertical")
+        val iconType = cfg.str("icon_type") ?: "icon"
+        if (iconType == "none") parts.shape.view.visibility = View.GONE
+        bindEntity(id) { e ->
+            showInfo(parts.primary, Color.WHITE, cfg.str("primary_info") ?: "name", cfg, e, id)
+            showInfo(parts.secondary, SECONDARY, cfg.str("secondary_info") ?: "state", cfg, e, id)
+            if (e == null) return@bindEntity
+            val custom = HaFormat.namedColor(cfg.str("icon_color"))
+            val color = when {
+                e.isUnavailable -> HaFormat.COLOR_INACTIVE
+                // like Mushroom, a configured icon_color shows whenever the entity isn't "off"
+                custom != null && e.state != "off" -> custom
+                else -> accent(cfg, e)
+            }
+            parts.shape.color(color)
+            val picture = e.attrString("entity_picture")
+            if (iconType == "entity-picture" && picture != null) parts.shape.picture(picture)
+            else parts.shape.icon(HaFormat.iconName(e, cfg.str("icon")))
+            if (HaFormat.isAlert(e)) parts.secondary.setTextColor(HaFormat.RED)
+            parts.card.background = if (HaFormat.isActive(e)) glass(tint = color) else glass()
+            parts.card.alpha = if (e.isUnavailable) 0.45f else 1f
+        }
+        return parts.card
+    }
+
+    /** primary_info / secondary_info: name, state, last-changed, last-updated, none. */
+    private fun showInfo(view: TextView, color: Int, kind: String, cfg: JsonObject, e: HaEntity?, id: String) {
+        view.setTextColor(color)
+        val text = when (kind) {
+            "name" -> displayName(cfg, e, id)
+            "state" -> e?.let { HaFormat.stateText(it) } ?: "—"
+            "last-changed", "last-updated" -> e?.let {
+                HaFormat.relativeTime(Instant.ofEpochMilli((it.lastChanged * 1000).toLong()), Instant.now())
+            } ?: ""
+            else -> ""
+        }
+        view.text = text
+        view.visibility = if (kind == "none" || text.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun isTemplate(value: String) = value.contains("{{") || value.contains("{%")
+
+    /** Sets [apply] from a plain value, or from Home Assistant once it renders the template. */
+    private fun templated(cfg: JsonObject, key: String, apply: (String) -> Unit) {
+        val value = cfg.str(key) ?: return apply("")
+        if (!isTemplate(value)) return apply(value)
+        apply("")
+        val variables = JsonObject().apply { cfg.str("entity")?.let { addProperty("entity", it) } }
+        templates += TemplateRequest(value, variables) { apply(it.trim()) }
+    }
+
+    private fun mushroomTemplateCard(cfg: JsonObject): View {
+        val parts = mushroomBase(cfg.str("layout") == "vertical")
+        if (cfg.bool("multiline_secondary", false)) {
+            parts.secondary.setSingleLine(false)
+            parts.secondary.maxLines = 4
+        }
+        templated(cfg, "primary") { parts.primary.text = it; parts.primary.visibility = if (it.isEmpty()) View.GONE else View.VISIBLE }
+        templated(cfg, "secondary") { parts.secondary.text = it; parts.secondary.visibility = if (it.isEmpty()) View.GONE else View.VISIBLE }
+        var hasIcon = false
+        templated(cfg, "icon_color") { parts.shape.color(HaFormat.namedColor(it) ?: HaFormat.COLOR_INACTIVE) }
+        templated(cfg, "icon") { icon ->
+            hasIcon = icon.isNotEmpty()
+            HaFormat.stripIconPrefix(icon)?.let { parts.shape.icon(it) }
+            parts.shape.view.visibility = if (hasIcon || cfg.str("picture") != null) View.VISIBLE else View.GONE
+        }
+        templated(cfg, "picture") { if (it.isNotEmpty()) { parts.shape.picture(it); parts.shape.view.visibility = View.VISIBLE } }
+        return parts.card
+    }
+
+    private fun mushroomTitleCard(cfg: JsonObject): View {
+        val box = vertical().apply { setPadding(dp(4), dp(10), dp(4), dp(4)) }
+        val gravity = when (cfg.str("alignment")) {
+            "center" -> Gravity.CENTER
+            "end" -> Gravity.END
+            else -> Gravity.START
+        }
+        val title = text(22f, Color.WHITE, bold = true).apply { this.gravity = gravity }
+        val subtitle = text(15f, SECONDARY).apply { this.gravity = gravity }
+        box.addView(title, matchWrap())
+        box.addView(subtitle, matchWrap(top = 4))
+        templated(cfg, "title") { title.text = it; title.visibility = if (it.isEmpty()) View.GONE else View.VISIBLE }
+        templated(cfg, "subtitle") { subtitle.text = it; subtitle.visibility = if (it.isEmpty()) View.GONE else View.VISIBLE }
+        return box
+    }
+
+    private fun mushroomChipsCard(cfg: JsonObject): View {
+        val flow = FlowLayout(context, dp(8), dp(8)).apply {
+            gravityCenter = cfg.str("alignment") == "center"
+            gravityEnd = cfg.str("alignment") == "end"
+        }
+        // spacers only make sense on a single line; in a wrapping row they're dropped
+        cfg.arr("chips")?.mapNotNull { it.asObj() }?.filter { it.str("type") != "spacer" }?.forEach { chipCfg ->
+            mushroomChip(chipCfg)?.let { flow.addView(it) }
+        }
+        return flow
+    }
+
+    private fun mushroomChip(cfg: JsonObject): View? {
+        val type = cfg.str("type") ?: "entity"
+        if (type == "conditional") {
+            val inner = cfg.obj("chip")?.let { mushroomChip(it) } ?: return null
+            cfg.arr("conditions")?.let { bindVisibility(inner, it) }
+            return inner
+        }
+        val chip = horizontal().apply {
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18).toFloat()
+                setColor(0x1FFFFFFF)
+                setStroke(dp(1), 0x17FFFFFF)
+            }
+            setPadding(dp(10), dp(6), dp(12), dp(6))
+        }
+        val icon = MdiIcons.view(context, 18f, HaFormat.COLOR_INACTIVE)
+        val image = ImageView(context).apply { visibility = View.GONE }
+        val label = text(14f, Color.WHITE)
+        chip.addView(icon, LinearLayout.LayoutParams(dp(22), dp(22)))
+        chip.addView(image, LinearLayout.LayoutParams(dp(22), dp(22)))
+        chip.addView(label, wrap(left = 6))
+        fun setLabel(value: String) {
+            label.text = value
+            label.visibility = if (value.isEmpty()) View.GONE else View.VISIBLE
+        }
+        when (type) {
+            "entity", "light", "alarm-control-panel" -> {
+                val id = cfg.str("entity") ?: return null
+                bindEntity(id) { e ->
+                    if (e == null) { setLabel("—"); return@bindEntity }
+                    MdiIcons.set(icon, HaFormat.iconName(e, cfg.str("icon")))
+                    val custom = HaFormat.namedColor(cfg.str("icon_color"))
+                    icon.setTextColor(if (custom != null && !e.isUnavailable && e.state != "off") custom else accent(cfg, e))
+                    setLabel(when (cfg.str("content_info") ?: "state") {
+                        "name" -> displayName(cfg, e, id)
+                        "last-changed", "last-updated" -> HaFormat.relativeTime(Instant.ofEpochMilli((e.lastChanged * 1000).toLong()), Instant.now())
+                        "none" -> ""
+                        else -> HaFormat.stateText(e)
+                    })
+                }
+            }
+            "weather" -> {
+                val id = cfg.str("entity") ?: return null
+                icon.visibility = View.GONE
+                image.visibility = View.VISIBLE
+                val showTemperature = cfg.bool("show_temperature", true)
+                val showConditions = cfg.bool("show_conditions", false)
+                bindEntity(id) { e ->
+                    if (e == null) return@bindEntity
+                    image.setImageDrawable(AppCompatResources.getDrawable(context, weatherDrawable(e.state)))
+                    setLabel(listOfNotNull(
+                        if (showTemperature) e.attrDouble("temperature")?.let { "${it.roundToInt()}°" } else null,
+                        if (showConditions) HaFormat.weatherConditionText(e.state) else null
+                    ).joinToString(" · "))
+                }
+            }
+            "template" -> {
+                templated(cfg, "icon") { name -> HaFormat.stripIconPrefix(name)?.let { MdiIcons.set(icon, it) }; icon.visibility = if (name.isEmpty()) View.GONE else View.VISIBLE }
+                templated(cfg, "icon_color") { icon.setTextColor(HaFormat.namedColor(it) ?: HaFormat.COLOR_INACTIVE) }
+                templated(cfg, "content") { setLabel(it) }
+            }
+            "action" -> {
+                MdiIcons.set(icon, cfg.str("icon")?.let { HaFormat.stripIconPrefix(it) } ?: "flash")
+                icon.setTextColor(HaFormat.namedColor(cfg.str("icon_color")) ?: HaFormat.COLOR_INACTIVE)
+                setLabel("")
+            }
+            else -> return null // back / menu / quickbar: navigation, meaningless on the frame
+        }
+        return chip
+    }
+
+    // ---- Bubble Card (custom:bubble-card) ----------------------------------------------------
+    // Pill-shaped buttons with a round icon; lights fill like a slider, switches tint when on.
+
+    private fun bubbleCard(cfg: JsonObject): View = when (cfg.str("card_type")) {
+        "separator" -> bubbleSeparator(cfg)
+        "button", "select", "climate", "cover" -> bubbleButton(cfg)
+        "media-player" -> bubbleMedia(cfg)
+        "horizontal-buttons-stack" -> bubbleButtonsStack(cfg)
+        "empty-column" -> View(context)
+        // pop-ups open from a link; nothing to show on a wall display
+        "pop-up" -> View(context).apply { visibility = View.GONE }
+        else -> fallbackCard(cfg)
+    }
+
+    private class BubbleParts(val pill: BubblePill, val shape: MushroomShape, val name: TextView, val state: TextView, val subs: LinearLayout)
+
+    private fun bubbleBase(): BubbleParts {
+        val pill = BubblePill(context)
+        val row = horizontal().apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(7), dp(7), dp(14), dp(7))
+        }
+        val shape = MushroomShape(40)
+        row.addView(shape.view, LinearLayout.LayoutParams(dp(40), dp(40)))
+        val texts = vertical()
+        val name = text(14f, Color.WHITE, bold = true)
+        val state = text(12f, SECONDARY)
+        texts.addView(name, wrap())
+        texts.addView(state, wrap(top = 2))
+        row.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(10) })
+        val subs = horizontal().apply { gravity = Gravity.CENTER_VERTICAL }
+        row.addView(subs, wrap(left = 6))
+        pill.addView(row, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL))
+        pill.minimumHeight = dp(54)
+        return BubbleParts(pill, shape, name, state, subs)
+    }
+
+    private fun bubbleButton(cfg: JsonObject): View {
+        val parts = bubbleBase()
+        val type = cfg.str("card_type") ?: "button"
+        val buttonType = cfg.str("button_type") ?: "switch"
+        val showName = cfg.bool("show_name", true)
+        val showState = cfg.bool("show_state", type != "button" || buttonType == "state")
+        if (!cfg.bool("show_icon", true)) parts.shape.view.visibility = View.GONE
+        cfg.arr("sub_button")?.mapNotNull { it.asObj() }?.forEach { sub -> bubbleSubButton(sub)?.let { parts.subs.addView(it, wrap(left = 6)) } }
+        val id = cfg.str("entity")
+        if (id == null) {
+            parts.name.text = cfg.str("name").orEmpty()
+            parts.state.visibility = View.GONE
+            parts.shape.icon(cfg.str("icon")?.let { HaFormat.stripIconPrefix(it) } ?: "gesture-tap-button")
+            parts.shape.color(PRIMARY)
+            return parts.pill
+        }
+        bindEntity(id) { e ->
+            parts.name.text = displayName(cfg, e, id)
+            parts.name.visibility = if (showName) View.VISIBLE else View.GONE
+            if (e == null) { parts.state.text = "—"; return@bindEntity }
+            val color = accent(cfg, e)
+            parts.shape.color(color)
+            parts.shape.icon(HaFormat.iconName(e, cfg.str("icon")))
+            val lines = mutableListOf<String>()
+            if (showState) lines += when (type) {
+                "select" -> e.state
+                else -> HaFormat.stateText(e)
+            }
+            if (cfg.bool("show_last_changed", false)) {
+                lines += HaFormat.relativeTime(Instant.ofEpochMilli((e.lastChanged * 1000).toLong()), Instant.now())
+            }
+            if (cfg.bool("show_attribute", false)) cfg.str("attribute")?.let { a -> e.attr(a)?.let { lines += formatValue(it) } }
+            parts.state.text = lines.joinToString(" · ")
+            parts.state.visibility = if (lines.isEmpty()) View.GONE else View.VISIBLE
+            parts.state.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else SECONDARY)
+            // slider: fill to the brightness/position; switch: the whole pill tints when on
+            val active = HaFormat.isActive(e)
+            parts.pill.fillColor = withAlpha(color, 0x4D)
+            parts.pill.fraction = when {
+                !active -> 0f
+                buttonType == "slider" && e.domain == "light" -> ((e.attrDouble("brightness") ?: 255.0) / 255.0).toFloat()
+                buttonType == "slider" && e.attrDouble("current_position") != null -> (e.attrDouble("current_position")!! / 100.0).toFloat()
+                buttonType == "slider" -> e.state.toDoubleOrNull()?.let { (it / 100.0).toFloat() } ?: 1f
+                buttonType == "switch" || buttonType == "slider" -> 1f
+                else -> 0f
+            }
+            parts.pill.alpha = if (e.isUnavailable) 0.45f else 1f
+        }
+        return parts.pill
+    }
+
+    private fun bubbleMedia(cfg: JsonObject): View {
+        val id = cfg.str("entity") ?: return fallbackCard(cfg)
+        val parts = bubbleBase()
+        bindEntity(id) { e ->
+            if (e == null) { parts.name.text = displayName(cfg, e, id); parts.state.text = "—"; return@bindEntity }
+            val playing = e.state == "playing" || e.state == "paused"
+            val title = if (playing) e.attrString("media_title") else null
+            parts.name.text = title ?: displayName(cfg, e, id)
+            parts.state.text = if (playing) {
+                listOfNotNull(e.attrString("media_artist"), cfg.str("name") ?: e.friendlyName).joinToString(" · ")
+            } else HaFormat.stateText(e)
+            val color = HaFormat.iconColor(e)
+            parts.shape.color(color)
+            val picture = if (playing) e.attrString("entity_picture") else null
+            if (picture != null) parts.shape.picture(picture) else parts.shape.icon(HaFormat.iconName(e, cfg.str("icon")))
+            parts.pill.fillColor = withAlpha(HaFormat.stateColor(e), 0x33)
+            parts.pill.fraction = if (e.state == "playing") 1f else 0f
+            parts.pill.alpha = if (e.isUnavailable) 0.45f else 1f
+        }
+        return parts.pill
+    }
+
+    private fun bubbleSeparator(cfg: JsonObject): View {
+        val row = horizontal().apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), dp(8), dp(2), dp(4))
+            minimumHeight = dp(40)
+        }
+        cfg.str("icon")?.let { HaFormat.stripIconPrefix(it) }?.let { name ->
+            val icon = MdiIcons.view(context, 18f, 0xD9FFFFFF.toInt())
+            MdiIcons.set(icon, name)
+            row.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { rightMargin = dp(8) })
+        }
+        row.addView(text(15f, Color.WHITE, bold = true).apply { text = cfg.str("name").orEmpty() }, wrap())
+        row.addView(View(context).apply {
+            background = GradientDrawable().apply { cornerRadius = dp(2).toFloat(); setColor(0x26FFFFFF) }
+        }, LinearLayout.LayoutParams(0, dp(3), 1f).apply { leftMargin = dp(12); rightMargin = dp(4) })
+        cfg.arr("sub_button")?.mapNotNull { it.asObj() }?.forEach { sub -> bubbleSubButton(sub)?.let { row.addView(it, wrap(left = 6)) } }
+        return row
+    }
+
+    /** Bubble's small sub-buttons: icon plus optional name / state, in a little pill. */
+    private fun bubbleSubButton(cfg: JsonObject): View? {
+        val chip = horizontal().apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(4), dp(10), dp(4))
+            if (cfg.bool("show_background", true)) {
+                background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(0x1FFFFFFF) }
+            }
+        }
+        val icon = MdiIcons.view(context, 16f, HaFormat.COLOR_INACTIVE)
+        val label = text(12f, Color.WHITE)
+        if (cfg.bool("show_icon", true)) chip.addView(icon, LinearLayout.LayoutParams(dp(20), dp(20)))
+        chip.addView(label, wrap(left = 4))
+        val id = cfg.str("entity")
+        if (id == null) {
+            MdiIcons.set(icon, cfg.str("icon")?.let { HaFormat.stripIconPrefix(it) } ?: "circle-small")
+            label.text = cfg.str("name").orEmpty()
+            label.visibility = if (label.text.isEmpty()) View.GONE else View.VISIBLE
+            return chip
+        }
+        bindEntity(id) { e ->
+            if (e == null) return@bindEntity
+            MdiIcons.set(icon, HaFormat.iconName(e, cfg.str("icon")))
+            icon.setTextColor(accent(cfg, e))
+            val text = listOfNotNull(
+                if (cfg.bool("show_name", false)) displayName(cfg, e, id) else null,
+                if (cfg.bool("show_state", false)) HaFormat.stateText(e) else null
+            ).joinToString(" · ")
+            label.text = text
+            label.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
+            label.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else Color.WHITE)
+        }
+        return chip
+    }
+
+    /** horizontal-buttons-stack: numbered keys 1_name / 1_icon / 1_entity ... as a row of pills. */
+    private fun bubbleButtonsStack(cfg: JsonObject): View {
+        val flow = FlowLayout(context, dp(8), dp(8))
+        var i = 1
+        while (cfg.has("${i}_name") || cfg.has("${i}_link") || cfg.has("${i}_icon")) {
+            val sub = JsonObject().apply {
+                cfg.str("${i}_name")?.let { addProperty("name", it) }
+                cfg.str("${i}_icon")?.let { addProperty("icon", it) }
+                cfg.str("${i}_entity")?.let { addProperty("entity", it) }
+                addProperty("show_name", true)
+            }
+            bubbleSubButton(sub)?.let { flow.addView(it) }
+            i++
+        }
+        return flow
+    }
+
     // ---- badges, conditions ------------------------------------------------------------------
 
     private fun badgeRow(badges: JsonArray): View {
-        val row = horizontal()
-        entityList(badges).forEach { (id, item) -> row.addView(chip(id, item, compact = false), wrap(right = 8)) }
-        return row
+        val flow = FlowLayout(context, dp(8), dp(8))
+        entityList(badges).forEach { (id, item) -> flow.addView(chip(id, item, compact = false)) }
+        return flow
     }
 
     private fun chip(id: String, item: JsonObject, compact: Boolean): View {
@@ -1112,7 +1547,11 @@ class LovelaceRenderer(
     }
 
     private fun vertical() = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private fun horizontal() = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+    // no baseline alignment: it shifts icon shapes up to line up with the text's baseline
+    private fun horizontal() = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        isBaselineAligned = false
+    }
 
     private fun text(sizeSp: Float, color: Int, bold: Boolean = false, light: Boolean = false, caps: Boolean = false) =
         TextView(context).apply {

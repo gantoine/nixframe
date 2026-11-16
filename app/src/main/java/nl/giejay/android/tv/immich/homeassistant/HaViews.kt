@@ -162,3 +162,116 @@ class SparklineView(context: Context) : View(context) {
         }
     }
 }
+
+/** Lays children out left to right, wrapping onto new lines (Mushroom chips, badges). */
+class FlowLayout(context: Context, private val hGap: Int, private val vGap: Int) : android.view.ViewGroup(context) {
+    var gravityEnd = false
+    var gravityCenter = false
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val maxWidth = MeasureSpec.getSize(widthMeasureSpec).takeIf { MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED }
+            ?: Int.MAX_VALUE
+        var x = 0
+        var y = 0
+        var lineHeight = 0
+        var widest = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.visibility == GONE) continue
+            child.measure(MeasureSpec.makeMeasureSpec(maxWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            if (x > 0 && x + child.measuredWidth > maxWidth) {
+                x = 0
+                y += lineHeight + vGap
+                lineHeight = 0
+            }
+            x += child.measuredWidth + hGap
+            widest = max(widest, x - hGap)
+            lineHeight = max(lineHeight, child.measuredHeight)
+        }
+        val width = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY) maxWidth else min(widest, maxWidth)
+        setMeasuredDimension(width, y + lineHeight)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val width = r - l
+        // group children into lines, then place each line according to the gravity
+        val lines = mutableListOf<MutableList<View>>(mutableListOf())
+        var x = 0
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.visibility == GONE) continue
+            if (x > 0 && x + child.measuredWidth > width) {
+                lines += mutableListOf<View>()
+                x = 0
+            }
+            lines.last() += child
+            x += child.measuredWidth + hGap
+        }
+        var y = 0
+        for (line in lines) {
+            val lineWidth = line.sumOf { it.measuredWidth } + hGap * (line.size - 1).coerceAtLeast(0)
+            var cx = when {
+                gravityEnd -> width - lineWidth
+                gravityCenter -> (width - lineWidth) / 2
+                else -> 0
+            }
+            val lineHeight = line.maxOfOrNull { it.measuredHeight } ?: 0
+            for (child in line) {
+                val top = y + (lineHeight - child.measuredHeight) / 2
+                child.layout(cx, top, cx + child.measuredWidth, top + child.measuredHeight)
+                cx += child.measuredWidth + hGap
+            }
+            y += lineHeight + vGap
+        }
+    }
+}
+
+/** Bubble Card's pill: a rounded track with an optional fill (slider brightness, "on" switches). */
+class BubblePill(context: Context) : android.widget.FrameLayout(context) {
+    var fraction: Float = 0f
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            invalidate()
+        }
+    var fillColor: Int = 0
+        set(value) {
+            field = value
+            invalidate()
+        }
+    var baseColor: Int = 0x1FFFFFFF
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = resources.displayMetrics.density
+        color = 0x17FFFFFF
+    }
+    private val rect = RectF()
+    private val clip = Path()
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val radius = height / 2f
+        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        paint.color = baseColor
+        canvas.drawRoundRect(rect, radius, radius, paint)
+        if (fraction > 0f && fillColor != 0) {
+            canvas.save()
+            clip.reset()
+            clip.addRoundRect(rect, radius, radius, Path.Direction.CW)
+            canvas.clipPath(clip)
+            paint.color = fillColor
+            canvas.drawRect(0f, 0f, width * fraction, height.toFloat(), paint)
+            canvas.restore()
+        }
+        rect.inset(stroke.strokeWidth / 2, stroke.strokeWidth / 2)
+        canvas.drawRoundRect(rect, radius, radius, stroke)
+    }
+}
