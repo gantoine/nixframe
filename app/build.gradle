@@ -54,6 +54,16 @@ android {
         if (localPropsFile.exists()) localPropsFile.withInputStream { localProps.load(it) }
         def unsplashKey = localProps.getProperty('unsplash.accessKey') ?: System.getenv('UNSPLASH_ACCESS_KEY') ?: ''
         buildConfigField "String", "UNSPLASH_ACCESS_KEY", "\"${unsplashKey}\""
+
+        // Optional Home Assistant defaults for the Home tab (same idea: typing a long-lived token
+        // with a remote is impractical). homeassistant.url / .token / .dashboard in local.properties
+        // or HA_URL / HA_TOKEN / HA_DASHBOARD env vars. Settings > Home Assistant overrides them.
+        def haUrl = localProps.getProperty('homeassistant.url') ?: System.getenv('HA_URL') ?: ''
+        def haToken = localProps.getProperty('homeassistant.token') ?: System.getenv('HA_TOKEN') ?: ''
+        def haDashboard = localProps.getProperty('homeassistant.dashboard') ?: System.getenv('HA_DASHBOARD') ?: ''
+        buildConfigField "String", "HA_URL", "\"${haUrl}\""
+        buildConfigField "String", "HA_TOKEN", "\"${haToken}\""
+        buildConfigField "String", "HA_DASHBOARD", "\"${haDashboard}\""
     }
 
     signingConfigs {

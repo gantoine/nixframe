@@ -552,6 +552,31 @@ data object WEATHER_ANIMATED_BACKGROUND : BooleanPref(true, ImmichApplication.ap
     override fun key() = "weatherAnimatedBackground"
 }
 
+// Home Assistant (Home tab). Blank = the build-time default from local.properties, if any.
+data object HA_URL : StringPref("",
+    ImmichApplication.appContext!!.getString(R.string.ha_url),
+    ImmichApplication.appContext!!.getString(R.string.ha_url_desc)) {
+    override fun key() = "haUrl"
+}
+/** Long-lived access token; encrypted at rest like [API_KEY]. */
+data object HA_TOKEN : StringPref("",
+    ImmichApplication.appContext!!.getString(R.string.ha_token),
+    ImmichApplication.appContext!!.getString(R.string.ha_token_desc)) {
+    override fun key() = "haToken"
+    override fun getValue(sharedPreferences: SharedPreferences): String =
+        fromPrefValue(sharedPreferences.getString(key(), defaultValue) ?: defaultValue)
+    override fun fromPrefValue(prefValue: String): String = ApiKeyCipher.decryptOrAdoptLegacy(prefValue)
+    override fun save(sharedPreferences: SharedPreferences, value: String) {
+        super.save(sharedPreferences, toPrefValue(value))
+    }
+    override fun toPrefValue(value: String): String = ApiKeyCipher.encrypt(value)
+}
+data object HA_DASHBOARD : StringPref("",
+    ImmichApplication.appContext!!.getString(R.string.ha_dashboard),
+    ImmichApplication.appContext!!.getString(R.string.ha_dashboard_desc)) {
+    override fun key() = "haDashboard"
+}
+
 // display (auto-dim + overnight screen-off), see display.DisplayController
 data object DISPLAY_AUTO_DIM : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.display_auto_dim),
@@ -778,6 +803,9 @@ data object GalleryPrefScreen : PrefScreen(ImmichApplication.appContext!!.getStr
 
 data object WeatherPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.weather), "weather",
     listOf(PrefCategory("", listOf(WEATHER_LOCATION, WEATHER_USE_FAHRENHEIT, WEATHER_ANIMATED_BACKGROUND))))
+
+data object HomeAssistantPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.home_assistant), "home_assistant",
+    listOf(PrefCategory("", listOf(HA_URL, HA_DASHBOARD, HA_TOKEN))))
 
 data object DisplayPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.display_brightness), "display_brightness",
     listOf(PrefCategory("", listOf(DISPLAY_AUTO_DIM, DISPLAY_NIGHT_SCHEDULE, DISPLAY_DAY_BRIGHTNESS,
