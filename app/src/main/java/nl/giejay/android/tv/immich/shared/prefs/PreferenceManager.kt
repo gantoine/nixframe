@@ -6,6 +6,7 @@ import androidx.preference.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
 import nl.giejay.android.tv.immich.security.ApiKeyCipher
 import nl.giejay.android.tv.immich.ImmichApplication
+import nl.giejay.android.tv.immich.slider.ClockWeatherViewPlugin
 import nl.giejay.android.tv.immich.slider.FavoriteButtonControllerPlugin
 import nl.giejay.android.tv.immich.slider.FavoriteService
 import nl.giejay.mediaslider.adapter.AlignOption
@@ -202,16 +203,23 @@ object PreferenceManager {
      * [MediaRemoteControlsKeyEventPlugin] handles remote/D-pad seek and related keys.
      * [DisplayTimeVolumeKeyEventPlugin] maps Up/Down to volume (video) / display time (photo).
      */
-    fun createEnabledSliderPlugins(scope: CoroutineScope, favoriteService: FavoriteService): EnabledSliderPlugins {
+    fun createEnabledSliderPlugins(
+        scope: CoroutineScope,
+        favoriteService: FavoriteService,
+        includeClockWeather: Boolean = false
+    ): EnabledSliderPlugins {
         val metadataPlugin = MetadataViewPlugin()
         val remoteControlsPlugin = MediaRemoteControlsKeyEventPlugin()
+        // bottom-left clock + temperature (viewer and Gallery; the screensaver has its own clock)
+        val clockWeatherPlugin = if (includeClockWeather && get(SLIDER_SHOW_CLOCK_WEATHER)) ClockWeatherViewPlugin() else null
         return EnabledSliderPlugins(
-            controllerPlugins = listOf(
+            controllerPlugins = listOfNotNull(
                 FavoriteButtonControllerPlugin(favoriteService, scope),
                 ExternalPlayerButtonControllerPlugin(),
-                metadataPlugin
+                metadataPlugin,
+                clockWeatherPlugin
             ),
-            viewPlugins = listOf(metadataPlugin, DateOverlayViewPlugin()),
+            viewPlugins = listOfNotNull(metadataPlugin, DateOverlayViewPlugin(), clockWeatherPlugin),
             keyEventPlugins = listOf(DisplayTimeVolumeKeyEventPlugin(ImmichApplication.appContext!!), remoteControlsPlugin)
         )
     }

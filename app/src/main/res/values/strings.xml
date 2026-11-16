@@ -154,6 +154,8 @@
     <string name="show_date_slideshow_desc">Show date of asset in slideshow</string>
     <string name="show_date_top_left">Show date top-left</string>
     <string name="show_date_top_left_viewer_desc">Show the asset date as a top-left overlay in the photo/video viewer. Independent of bottom metadata.</string>
+    <string name="show_clock_weather">Show clock and temperature</string>
+    <string name="show_clock_weather_desc">Show the time and current temperature in the bottom-left corner of the slideshow (Immich and Gallery). The temperature uses the weather location.</string>
     <string name="show_date_top_left_screensaver_desc">Show the asset date as a top-left overlay in the screensaver. Independent of bottom metadata.</string>
     <string name="show_city">Show city</string>
     <string name="show_city_desc">Show city of asset in slideshow</string>

@@ -55,7 +55,7 @@ class ImmichMediaSlider : MediaSliderFragment() {
             config.keyEventPlugins += timelinePlugin
         }
 
-        val enabledPlugins = PreferenceManager.createEnabledSliderPlugins(lifecycleScope, favoriteService)
+        val enabledPlugins = PreferenceManager.createEnabledSliderPlugins(lifecycleScope, favoriteService, includeClockWeather = true)
         // Another user's assets (a partner's timeline) can't be favourited by the signed-in user.
         config.controllerPlugins += enabledPlugins.controllerPlugins
             .filter { bundle.allowFavorite || it !is FavoriteButtonControllerPlugin }

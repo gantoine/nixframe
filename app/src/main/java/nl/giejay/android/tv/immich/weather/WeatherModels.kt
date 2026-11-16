@@ -77,3 +77,6 @@ data class DailyForecast(
     val high: Int,
     val low: Int
 )
+
+/** Compact current conditions for the slideshow's clock overlay. */
+data class CurrentConditions(val temperature: Int, val code: Int, val isDay: Boolean)

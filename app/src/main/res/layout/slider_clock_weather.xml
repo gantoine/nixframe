@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Slideshow corner overlay: big light clock, a hairline, then the current condition and temperature. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/slider_clock_weather"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:elevation="10dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <nl.giejay.mediaslider.view.SafeTextClock
+        android:id="@+id/slider_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
+        android:format12Hour="h:mm"
+        android:format24Hour="H:mm"
+        android:includeFontPadding="false"
+        android:shadowColor="#B3000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="10"
+        android:textColor="#FFFFFFFF"
+        android:textSize="54sp" />
+
+    <LinearLayout
+        android:id="@+id/slider_weather"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="18dp"
+            android:layout_marginEnd="16dp"
+            android:background="#66FFFFFF" />
+
+        <ImageView
+            android:id="@+id/slider_weather_icon"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:contentDescription="@string/weather" />
+
+        <TextView
+            android:id="@+id/slider_weather_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="sans-serif-light"
+            android:includeFontPadding="false"
+            android:shadowColor="#B3000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="10"
+            android:textColor="#FFFFFFFF"
+            android:textSize="32sp" />
+    </LinearLayout>
+</LinearLayout>

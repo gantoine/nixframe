@@ -23,6 +23,18 @@ interface OpenMeteoForecastService {
     ): ForecastResponse
 }
 
+/** Just the current conditions: a much smaller response for the slideshow's clock overlay. */
+interface OpenMeteoCurrentService {
+    @GET("v1/forecast")
+    suspend fun current(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("temperature_unit") temperatureUnit: String,
+        @Query("current") current: String = "temperature_2m,weather_code,is_day",
+        @Query("timezone") timezone: String = "auto"
+    ): ForecastResponse
+}
+
 interface OpenMeteoAirQualityService {
     @GET("v1/air-quality")
     suspend fun airQuality(

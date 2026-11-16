@@ -24,6 +24,10 @@ object WeatherRepository {
         retrofit("https://api.open-meteo.com/").create(OpenMeteoForecastService::class.java)
     }
 
+    private val currentService: OpenMeteoCurrentService by lazy {
+        retrofit("https://api.open-meteo.com/").create(OpenMeteoCurrentService::class.java)
+    }
+
     private val geocodingService: OpenMeteoGeocodingService by lazy {
         retrofit("https://geocoding-api.open-meteo.com/").create(OpenMeteoGeocodingService::class.java)
     }
@@ -44,6 +48,41 @@ object WeatherRepository {
     } catch (e: Exception) {
         Timber.w(e, "Could not geocode '$location'")
         null
+    }
+
+    private const val CURRENT_TTL_MS = 15 * 60_000L
+    private val geocodeMemo = mutableMapOf<String, GeoResult>()
+    private var currentCache: Pair<String, CurrentConditions>? = null
+    private var currentCachedAt = 0L
+
+    /**
+     * Current temperature and condition for [location], cached for 15 minutes so every slideshow
+     * (and every slide) shares one small request. Returns the last known value if a refresh fails.
+     */
+    suspend fun currentConditions(location: String, useFahrenheit: Boolean): CurrentConditions? {
+        val key = "$location|$useFahrenheit"
+        val now = System.currentTimeMillis()
+        synchronized(this) {
+            currentCache?.let { (k, v) -> if (k == key && now - currentCachedAt < CURRENT_TTL_MS) return v }
+        }
+        return try {
+            val geo = synchronized(this) { geocodeMemo[location] }
+                ?: geocode(location)?.also { synchronized(this) { geocodeMemo[location] = it } }
+                ?: return null
+            val current = currentService.current(
+                geo.latitude, geo.longitude,
+                temperatureUnit = if (useFahrenheit) "fahrenheit" else "celsius"
+            ).current ?: return null
+            val conditions = CurrentConditions(current.temperature.roundToInt(), current.weatherCode, current.isDay != 0)
+            synchronized(this) {
+                currentCache = key to conditions
+                currentCachedAt = now
+            }
+            conditions
+        } catch (e: Exception) {
+            Timber.w(e, "Could not load current conditions for '$location'")
+            synchronized(this) { currentCache?.takeIf { it.first == key }?.second }
+        }
     }
 
     /** Returns the weather for [location], or null if it can't be resolved/loaded. */
