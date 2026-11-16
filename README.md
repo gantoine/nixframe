@@ -1,16 +1,24 @@
-# immich-nixplay
+# nixframe
 
-[Immich](https://github.com/immich-app/immich) Android TV for
-[Nixplay](https://www.nixplay.com/) digital photo frames, **including older models still on
-Android 4.4 (KitKat / API 19)**. A fork of
-[Immich Android TV](https://github.com/giejay/Immich-Android-TV) plus the frame work from
-[smerschjohann/Immix](https://github.com/smerschjohann/Immix).
+A home screen for [Nixplay](https://www.nixplay.com/) digital photo frames, **including older
+models still on Android 4.4 (KitKat / API 19)**: your [Immich](https://github.com/immich-app/immich)
+photos, an Unsplash gallery, weather and Home Assistant, on one frame.
 
-If you have a newer frame or any Android TV device on **API 21+**, the upstream app works as-is and
-most of this README's frame-specific caveats don't apply to you.
+It started as a fork of [Immich Android TV](https://github.com/giejay/Immich-Android-TV) (plus the
+frame work from [smerschjohann/Immix](https://github.com/smerschjohann/Immix)) and is still kept as a
+GitHub fork so upstream Immich improvements can be merged in.
+
+If you only want Immich on a newer frame or any Android TV device on **API 21+**, the upstream app
+works as-is and most of this README's frame-specific caveats don't apply to you.
 
 ## What this fork adds
 
+- **More than photos:**
+  - **Weather** tab with an animated scene per condition, plus a clock and current temperature
+    on the slideshow.
+  - **Gallery** tab: an Unsplash photo slideshow.
+  - **Home Assistant** integration.
+  - Display dims after sunset, with an optional overnight screen-off.
 - **Runs on Android 4.4 (API 19).** Older frames (e.g. the `w10a6`, on Android 4.4.4) can't install
   the stock app, which requires API 24. This fork lowers `minSdk` to 19 and ports everything that
   required a newer OS: legacy ExoPlayer 2.x for video, OkHttp 3.12 + a TLS 1.2 socket factory,

@@ -15,7 +15,7 @@
   -->
 
 <resources>
-    <string name="app_name" translatable="false">Immich TV</string>
+    <string name="app_name" translatable="false">Nixframe</string>
 
     <!-- Strings for the "No Firebase" screen -->
     <string name="no_firebase_title">Firebase not configured</string>
@@ -382,4 +382,22 @@
     <string name="display_screen_off">Turn off overnight</string>
     <string name="display_screen_off_desc">Keep the screen off during these hours (the power button still wakes it)</string>
     <string name="display_screen_off_never">Never</string>
+    <!-- Home Assistant tab -->
+    <string name="ha_tab">Home</string>
+    <string name="home_assistant">Home Assistant</string>
+    <string name="ha_url">Server URL</string>
+    <string name="ha_url_desc">Home Assistant address as the frame reaches it, e.g. https://ha.example.com or http://192.168.1.10:8123</string>
+    <string name="ha_token">Access token</string>
+    <string name="ha_token_desc">A long-lived access token (Home Assistant → Profile → Security). Leave blank to use the built-in one.</string>
+    <string name="ha_dashboard">Dashboard</string>
+    <string name="ha_dashboard_desc">The dashboard\'s URL path, e.g. dashboard-frame (optionally /view). Blank shows the default dashboard.</string>
+    <string name="ha_not_configured">Set up Home Assistant in Settings → Home Assistant</string>
+    <string name="ha_connecting">Connecting to Home Assistant…</string>
+    <string name="ha_loading">Loading dashboard…</string>
+    <string name="ha_reconnecting">Reconnecting…</string>
+    <string name="ha_auth_failed">Home Assistant rejected the access token. Check it in Settings → Home Assistant.</string>
+    <string name="ha_dashboard_not_found">Dashboard "%1$s" wasn\'t found in Home Assistant</string>
+    <string name="ha_dashboard_strategy">This dashboard is auto-generated. In Home Assistant, choose "Take control" on it (or pick another dashboard) so the frame can show it.</string>
+    <string name="ha_dashboard_empty">This dashboard has no views yet</string>
+    <string name="ha_error">Couldn\'t load the dashboard</string>
 </resources>
