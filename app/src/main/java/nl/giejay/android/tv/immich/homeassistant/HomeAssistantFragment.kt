@@ -1,6 +1,7 @@
 package nl.giejay.android.tv.immich.homeassistant
 
 import android.graphics.drawable.GradientDrawable
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -28,6 +29,7 @@ import nl.giejay.android.tv.immich.shared.prefs.HA_DASHBOARD
 import nl.giejay.android.tv.immich.shared.prefs.HA_TOKEN
 import nl.giejay.android.tv.immich.shared.prefs.HA_URL
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
+import nl.giejay.mediaslider.view.SafeTextClock
 import timber.log.Timber
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -225,6 +227,7 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
         val width = (requireView().width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels) - content.paddingLeft - content.paddingRight
         val built = r.renderView(view, width)
         content.removeAllViews()
+        content.addView(header())
         content.addView(built)
         renderer = r
         status.visibility = View.GONE
@@ -248,6 +251,39 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
         }
         if (r.periodic.isNotEmpty()) handler.postDelayed(cameraTick, CAMERA_REFRESH_MS)
         if (r.histories.isNotEmpty()) handler.post(historyTick)
+    }
+
+    /** Big clock and the date: the frame is mostly glanced at from across the room. */
+    private fun header(): View {
+        val context = requireContext()
+        val density = resources.displayMetrics.density
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+            setPadding(0, 0, 0, (16 * density).toInt())
+        }
+        val time = SafeTextClock(context).apply {
+            format12Hour = "h:mm"
+            format24Hour = "H:mm"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 52f)
+            setTextColor(0xFFFFFFFF.toInt())
+            typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
+            includeFontPadding = false
+        }
+        row.addView(time)
+        val date = SafeTextClock(context).apply {
+            format12Hour = "EEEE, MMMM d"
+            format24Hour = "EEEE, MMMM d"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTextColor(0xB3FFFFFF.toInt())
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            includeFontPadding = false
+        }
+        row.addView(date, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            leftMargin = (16 * density).toInt()
+            bottomMargin = (8 * density).toInt()
+        })
+        return row
     }
 
     private fun loadHistories() {

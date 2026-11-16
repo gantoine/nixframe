@@ -218,10 +218,10 @@ class LovelaceRenderer(
         badge.addView(icon, FrameLayout.LayoutParams(dp(36), dp(36)))
         card.addView(badge, LinearLayout.LayoutParams(dp(36), dp(36)))
         val texts = vertical().apply { if (verticalLayout) gravity = Gravity.CENTER_HORIZONTAL }
-        val name = text(14f, Color.WHITE, bold = true)
+        val name = text(15f, Color.WHITE)
         val state = text(13f, SECONDARY)
         texts.addView(name, wrap())
-        if (!cfg.bool("hide_state", false)) texts.addView(state, wrap())
+        if (!cfg.bool("hide_state", false)) texts.addView(state, wrap(top = 3))
         card.addView(texts, if (verticalLayout) wrap(top = 8) else LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(10) })
         if (verticalLayout) { name.gravity = Gravity.CENTER; state.gravity = Gravity.CENTER }
 
@@ -233,9 +233,13 @@ class LovelaceRenderer(
             }
             val accent = accent(cfg, e)
             icon.setTextColor(accent)
-            circle.setColor((accent and 0x00FFFFFF) or 0x33000000)
+            circle.setColor(withAlpha(accent, if (accent == HaFormat.COLOR_INACTIVE) 0x1F else 0x38))
             MdiIcons.set(icon, HaFormat.iconName(e, cfg.str("icon")))
             state.text = stateContent(cfg, e)
+            state.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else SECONDARY)
+            // "on" tiles glow with their colour; unavailable ones step back
+            card.background = if (HaFormat.isActive(e)) glass(tint = accent) else glass()
+            card.alpha = if (e.isUnavailable) 0.45f else 1f
         }
         return card
     }
@@ -544,19 +548,27 @@ class LovelaceRenderer(
             top.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)))
             val texts = vertical()
             val condition = text(18f, Color.WHITE)
-            val name = text(13f, SECONDARY)
+            val name = text(13f, LABEL)
             texts.addView(condition, wrap())
             texts.addView(name, wrap())
             top.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(12) })
-            val temp = text(36f, Color.WHITE, light = true)
+            val temp = text(42f, Color.WHITE, light = true)
             top.addView(temp, wrap())
             card.addView(top, matchWrap())
+            val details = text(13f, SECONDARY)
+            card.addView(details, matchWrap(top = 8))
             bindEntity(id) { e ->
                 name.text = displayName(cfg, e, id)
                 if (e == null) { condition.text = "—"; return@bindEntity }
                 icon.setImageDrawable(AppCompatResources.getDrawable(context, weatherDrawable(e.state)))
                 condition.text = HaFormat.weatherConditionText(e.state)
-                temp.text = e.attrDouble("temperature")?.let { HaFormat.number(it) + (e.attrString("temperature_unit") ?: "°") } ?: ""
+                temp.text = e.attrDouble("temperature")?.let { HaFormat.number(it.roundToInt().toDouble()) + "°" } ?: ""
+                details.text = listOfNotNull(
+                    e.attrDouble("humidity")?.let { "Humidity ${HaFormat.number(it)}%" },
+                    e.attrDouble("wind_speed")?.let { "Wind ${HaFormat.number(it.roundToInt().toDouble())} ${e.attrString("wind_speed_unit") ?: "km/h"}" },
+                    e.attrDouble("apparent_temperature")?.let { "Feels like ${it.roundToInt()}°" }
+                ).joinToString("  ·  ")
+                details.visibility = if (details.text.isEmpty()) View.GONE else View.VISIBLE
             }
         }
         if (cfg.bool("show_forecast", true)) {
@@ -625,15 +637,15 @@ class LovelaceRenderer(
     private fun headingCard(cfg: JsonObject): View {
         val row = horizontal().apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), dp(10), dp(4), dp(2))
+            setPadding(dp(4), dp(8), dp(4), dp(2))
         }
         cfg.str("icon")?.let { HaFormat.stripIconPrefix(it) }?.let { name ->
-            val icon = MdiIcons.view(context, 20f, SECONDARY)
+            val icon = MdiIcons.view(context, 16f, LABEL)
             MdiIcons.set(icon, name)
-            row.addView(icon, LinearLayout.LayoutParams(dp(26), dp(26)).apply { rightMargin = dp(6) })
+            row.addView(icon, LinearLayout.LayoutParams(dp(20), dp(20)).apply { rightMargin = dp(6) })
         }
         val subtitle = cfg.str("heading_style") == "subtitle"
-        val title = text(if (subtitle) 14f else 19f, if (subtitle) SECONDARY else Color.WHITE, bold = !subtitle).apply {
+        val title = text(if (subtitle) 12f else 13f, LABEL, bold = true, caps = true).apply {
             text = cfg.str("heading").orEmpty()
         }
         row.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -716,19 +728,20 @@ class LovelaceRenderer(
             setPadding(dp(12), dp(12), dp(14), dp(12))
         }
         val art = ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
-        val icon = MdiIcons.view(context, 40f, HaFormat.COLOR_INACTIVE)
-        val artBox = FrameLayout(context).apply { background = GradientDrawable().apply { setColor(0x1AFFFFFF); cornerRadius = dp(10).toFloat() } }
-        artBox.addView(icon, FrameLayout.LayoutParams(dp(84), dp(84)))
-        artBox.addView(art, FrameLayout.LayoutParams(dp(84), dp(84)))
-        card.addView(artBox, LinearLayout.LayoutParams(dp(84), dp(84)))
+        val icon = MdiIcons.view(context, 20f, HaFormat.COLOR_INACTIVE)
+        val iconShape = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        val artBox = FrameLayout(context)
+        artBox.addView(icon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        artBox.addView(art, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        card.addView(artBox, LinearLayout.LayoutParams(dp(36), dp(36)))
         val texts = vertical()
-        val title = text(16f, Color.WHITE, bold = true)
-        val artist = text(14f, SECONDARY)
+        val title = text(15f, Color.WHITE)
+        val artist = text(13f, SECONDARY)
         val status = text(12f, LABEL)
         texts.addView(title, wrap())
         texts.addView(artist, wrap())
         texts.addView(status, wrap(top = 4))
-        card.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(14) })
+        card.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { leftMargin = dp(12) })
         bindEntity(id) { e ->
             if (e == null) { title.text = id; return@bindEntity }
             val playing = e.state == "playing" || e.state == "paused"
@@ -736,9 +749,21 @@ class LovelaceRenderer(
             artist.text = if (playing) listOfNotNull(e.attrString("media_artist"), e.attrString("media_album_name")).joinToString(" · ") else ""
             status.text = listOfNotNull(HaFormat.stateText(e), e.attrString("app_name"), if (playing) e.friendlyName else null)
                 .distinct().joinToString(" · ")
+            status.setTextColor(if (playing) LABEL else SECONDARY)
             MdiIcons.set(icon, HaFormat.iconName(e, cfg.str("icon")))
-            icon.setTextColor(HaFormat.stateColor(e))
+            val accent = HaFormat.iconColor(e)
+            icon.setTextColor(accent)
+            iconShape.setColor(withAlpha(accent, if (accent == HaFormat.COLOR_INACTIVE) 0x1F else 0x38))
             val picture = if (playing) e.attrString("entity_picture") else null
+            // playing/paused: large artwork, tinted card. Otherwise a compact tile-like row.
+            val size = if (playing) dp(84) else dp(36)
+            artBox.layoutParams = LinearLayout.LayoutParams(size, size)
+            artBox.background = if (playing) GradientDrawable().apply { setColor(0x1AFFFFFF); cornerRadius = dp(12).toFloat() } else iconShape
+            icon.setTextSize(TypedValue.COMPLEX_UNIT_DIP, if (playing) 36f else 20f)
+            artist.visibility = if (playing && artist.text.isNotEmpty()) View.VISIBLE else View.GONE
+            card.setPadding(dp(10), dp(10), dp(12), dp(10))
+            card.background = if (e.state == "playing") glass(tint = HaFormat.stateColor(e)) else glass()
+            card.alpha = if (e.isUnavailable) 0.45f else 1f
             if (picture != null) {
                 art.visibility = View.VISIBLE
                 if (art.getTag(R.id.ha_image_path) != picture) images.load(picture, art, dp(84))
@@ -929,6 +954,7 @@ class LovelaceRenderer(
             MdiIcons.set(icon, HaFormat.iconName(e, item.str("icon")))
             icon.setTextColor(accent(item, e))
             state.text = HaFormat.stateText(e)
+            state.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else Color.WHITE)
         }
         return chip
     }
@@ -974,7 +1000,9 @@ class LovelaceRenderer(
 
     private fun accent(cfg: JsonObject, e: HaEntity): Int =
         if (HaFormat.isActive(e)) HaFormat.namedColor(cfg.str("color"))?.takeIf { cfg.str("color") != "state" } ?: HaFormat.stateColor(e)
-        else HaFormat.COLOR_INACTIVE
+        else HaFormat.iconColor(e)
+
+    private fun withAlpha(color: Int, alpha: Int) = (color and 0x00FFFFFF) or (alpha shl 24)
 
     private fun accentOrPrimary(cfg: JsonObject, e: HaEntity): Int =
         HaFormat.namedColor(cfg.str("color")) ?: if (HaFormat.isActive(e)) HaFormat.stateColor(e) else PRIMARY
@@ -1040,7 +1068,7 @@ class LovelaceRenderer(
 
     private fun cardTitle(cfg: JsonObject): TextView? {
         val title = cfg.str("title")?.takeIf { it.isNotBlank() } ?: return null
-        return text(17f, Color.WHITE, bold = true).apply { text = title }
+        return text(13f, LABEL, bold = true, caps = true).apply { text = title }
     }
 
     private fun pictureView(cfg: JsonObject, widthPx: Int) = ImageView(context).apply {
@@ -1073,10 +1101,14 @@ class LovelaceRenderer(
         setPadding(dp(16), dp(14), dp(16), dp(14))
     }
 
-    private fun glass() = GradientDrawable().apply {
-        cornerRadius = dp(16).toFloat()
-        setColor(0x1AFFFFFF)
-        setStroke(dp(1), 0x1FFFFFFF)
+    /** Frosted card: lighter at the top, a hairline edge; [tint] washes it with a state colour. */
+    private fun glass(tint: Int? = null) = GradientDrawable(
+        GradientDrawable.Orientation.TOP_BOTTOM,
+        if (tint == null) intArrayOf(0x21FFFFFF, 0x12FFFFFF)
+        else intArrayOf(withAlpha(tint, 0x40), withAlpha(tint, 0x1A))
+    ).apply {
+        cornerRadius = dp(18).toFloat()
+        setStroke(dp(1), if (tint == null) 0x17FFFFFF else withAlpha(tint, 0x40))
     }
 
     private fun vertical() = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }

@@ -164,7 +164,7 @@ object HaFormat {
     const val COLOR_INACTIVE = 0xFF9EA7B3.toInt()
     private const val AMBER = 0xFFFFC107.toInt()
     private const val ORANGE = 0xFFFF9800.toInt()
-    private const val RED = 0xFFF0626B.toInt()
+    const val RED = 0xFFF0626B.toInt()
     private const val GREEN = 0xFF4CC38A.toInt()
     private const val BLUE = 0xFF4BA3F5.toInt()
     private const val PURPLE = 0xFFB27CF0.toInt()
@@ -214,6 +214,64 @@ object HaFormat {
             "vacuum" -> CYAN
             "update" -> ORANGE
             else -> AMBER
+        }
+    }
+
+    /**
+     * Icon colour: the active colour when the entity is "on", otherwise a tone that says something
+     * about the value (battery level, a service being up, a safety sensor being clear), and only
+     * then neutral grey. HA itself greys out nearly everything that's off, which on a wall display
+     * makes every card look the same.
+     */
+    fun iconColor(e: HaEntity): Int {
+        if (e.isUnavailable) return COLOR_INACTIVE
+        if (isActive(e)) return stateColor(e)
+        return tone(e) ?: COLOR_INACTIVE
+    }
+
+    /** True when the entity needs attention (low battery, service down, leak or smoke detected). */
+    fun isAlert(e: HaEntity): Boolean = !e.isUnavailable && (iconColor(e) == RED)
+
+    private val GOOD_STATES = setOf("up", "online", "connected", "ok", "healthy", "ready", "running", "normal", "idle")
+    private val BAD_STATES = setOf("down", "offline", "disconnected", "error", "failed", "problem", "critical", "unhealthy")
+    private val SAFETY_CLASSES = setOf("smoke", "gas", "carbon_monoxide", "moisture", "problem", "safety", "tamper", "heat", "cold")
+
+    private fun tone(e: HaEntity): Int? = when (e.domain) {
+        "sensor" -> sensorTone(e)
+        "binary_sensor" -> when {
+            e.deviceClass in SAFETY_CLASSES -> GREEN // "off" = clear / dry / OK
+            e.deviceClass == "connectivity" -> RED // "off" = disconnected
+            e.deviceClass == "battery" -> GREEN // "off" = normal
+            else -> null
+        }
+        "weather" -> AMBER
+        "sun" -> INDIGO
+        "humidifier" -> null
+        else -> null
+    }
+
+    private fun sensorTone(e: HaEntity): Int? {
+        val value = e.state.toDoubleOrNull()
+        if (e.deviceClass == "battery" && value != null) {
+            return when {
+                value < 20 -> RED
+                value < 50 -> AMBER
+                else -> GREEN
+            }
+        }
+        val lower = e.state.lowercase(Locale.US)
+        if (value == null) {
+            if (lower in GOOD_STATES) return GREEN
+            if (lower in BAD_STATES) return RED
+        }
+        return when (e.deviceClass) {
+            "temperature" -> ORANGE
+            "humidity", "moisture", "precipitation", "precipitation_intensity", "water" -> CYAN
+            "illuminance" -> AMBER
+            "power", "apparent_power", "energy", "voltage", "current" -> AMBER
+            "carbon_dioxide", "volatile_organic_compounds", "pm25", "pm10", "pm1", "aqi" -> GREEN
+            "pressure", "atmospheric_pressure", "wind_speed", "speed" -> BLUE
+            else -> null
         }
     }
 
