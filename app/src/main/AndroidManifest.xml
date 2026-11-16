@@ -24,6 +24,12 @@
     <!-- Keep the display awake while showing photos (Nixplay frame) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Auto-dim after sunset (display.DisplayController): set the backlight level and draw a
+         dimming overlay below the backlight's floor. Granted at install on KitKat / system apps. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Access internet-based media -->
     <uses-permission android:name="android.permission.INTERNET" />
 

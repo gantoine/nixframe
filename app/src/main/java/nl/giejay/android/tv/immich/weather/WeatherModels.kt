@@ -10,7 +10,9 @@ data class GeoResult(
     val latitude: Double,
     val longitude: Double,
     val country: String?,
-    val admin1: String?
+    val admin1: String?,
+    /** IANA time zone, e.g. "America/Toronto". */
+    val timezone: String? = null
 )
 
 /** Open-Meteo forecast response. */

@@ -23,6 +23,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.multidex.MultiDex
 import nl.giejay.android.tv.immich.api.util.Tls12SocketFactory
+import nl.giejay.android.tv.immich.display.DisplayController
 import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.sensors.ActivitySensor
 import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
@@ -80,6 +81,9 @@ class ImmichApplication : Application() {
             userId = UUID.randomUUID().toString()
             PreferenceManager.save(USER_ID, userId)
         }
+
+        // Auto-dim after sunset and the optional overnight screen-off (read by the sensor loop below).
+        DisplayController.start(this)
 
         // Start polling the (Nixplay) motion sensor to drive the display wakelock.
         this.mainHandler.post(sensorServiceRunnable)

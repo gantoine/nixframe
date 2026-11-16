@@ -38,6 +38,14 @@ object WeatherRepository {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
+    /** Resolves [location] to coordinates and a time zone, or null if not found / offline. */
+    suspend fun geocode(location: String): GeoResult? = try {
+        geocodingService.search(location).results?.firstOrNull()
+    } catch (e: Exception) {
+        Timber.w(e, "Could not geocode '$location'")
+        null
+    }
+
     /** Returns the weather for [location], or null if it can't be resolved/loaded. */
     suspend fun load(location: String, useFahrenheit: Boolean): Weather? {
         try {

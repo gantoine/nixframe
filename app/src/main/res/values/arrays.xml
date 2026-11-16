@@ -209,4 +209,42 @@
         <item>100</item>
     </string-array>
 
+    <string-array name="display_day_brightness_titles">
+        <item>100%</item>
+        <item>90%</item>
+        <item>80%</item>
+        <item>70%</item>
+        <item>60%</item>
+        <item>50%</item>
+        <item>40%</item>
+    </string-array>
+    <string-array name="display_day_brightness_values" translatable="false">
+        <item>100</item>
+        <item>90</item>
+        <item>80</item>
+        <item>70</item>
+        <item>60</item>
+        <item>50</item>
+        <item>40</item>
+    </string-array>
+    <string-array name="display_night_brightness_titles">
+        <item>40%</item>
+        <item>25%</item>
+        <item>10%</item>
+        <item>Lowest backlight</item>
+        <item>Lowest + 20% shade</item>
+        <item>Lowest + 35% shade</item>
+        <item>Lowest + 50% shade</item>
+        <item>Lowest + 65% shade</item>
+    </string-array>
+    <string-array name="display_night_brightness_values" translatable="false">
+        <item>40</item>
+        <item>25</item>
+        <item>10</item>
+        <item>0</item>
+        <item>-20</item>
+        <item>-35</item>
+        <item>-50</item>
+        <item>-65</item>
+    </string-array>
 </resources>

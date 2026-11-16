@@ -17,6 +17,9 @@ import nl.giejay.android.tv.immich.ImmichApplication
 import nl.giejay.android.tv.immich.R
 import nl.giejay.android.tv.immich.album.AlbumFragmentDirections
 import nl.giejay.android.tv.immich.album.SelectionType
+import nl.giejay.android.tv.immich.display.DisplayController
+import nl.giejay.android.tv.immich.display.NightSchedule
+import nl.giejay.android.tv.immich.display.ScreenOffSchedule
 import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.people.PeopleFragmentDirections
 import nl.giejay.android.tv.immich.screensaver.ScreenSaverType
@@ -543,6 +546,54 @@ data object WEATHER_ANIMATED_BACKGROUND : BooleanPref(true, ImmichApplication.ap
     override fun key() = "weatherAnimatedBackground"
 }
 
+// display (auto-dim + overnight screen-off), see display.DisplayController
+data object DISPLAY_AUTO_DIM : BooleanPref(true,
+    ImmichApplication.appContext!!.getString(R.string.display_auto_dim),
+    ImmichApplication.appContext!!.getString(R.string.display_auto_dim_desc)) {
+    override fun key() = "displayAutoDim"
+}
+data object DISPLAY_NIGHT_SCHEDULE : EnumByTitlePref<NightSchedule>(NightSchedule.SUNSET_TO_SUNRISE,
+    ImmichApplication.appContext!!.getString(R.string.display_night_schedule),
+    ImmichApplication.appContext!!.getString(R.string.display_night_schedule_desc)) {
+    override fun key() = "displayNightSchedule"
+    override fun fromPrefValue(prefValue: String): NightSchedule =
+        NightSchedule.entries.firstOrNull { it.name == prefValue } ?: defaultValue
+    override fun getEnumEntries(): Array<NightSchedule> = NightSchedule.entries.toTypedArray()
+}
+data object DISPLAY_DAY_BRIGHTNESS : IntListPref(90,
+    ImmichApplication.appContext!!.getString(R.string.display_day_brightness),
+    ImmichApplication.appContext!!.getString(R.string.display_day_brightness_desc),
+    R.array.display_day_brightness_titles,
+    R.array.display_day_brightness_values) {
+    override fun key() = "displayDayBrightness"
+}
+data object DISPLAY_NIGHT_BRIGHTNESS : IntListPref(-35,
+    ImmichApplication.appContext!!.getString(R.string.display_night_brightness),
+    ImmichApplication.appContext!!.getString(R.string.display_night_brightness_desc),
+    R.array.display_night_brightness_titles,
+    R.array.display_night_brightness_values) {
+    override fun key() = "displayNightBrightness"
+}
+data object DISPLAY_PREVIEW_NIGHT : ActionPref("displayPreviewNight",
+    ImmichApplication.appContext!!.getString(R.string.display_preview_night),
+    ImmichApplication.appContext!!.getString(R.string.display_preview_night_desc),
+    { _, _ ->
+        DisplayController.previewNight()
+        true
+    })
+data object DISPLAY_SCREEN_OFF : EnumByTitlePref<ScreenOffSchedule>(ScreenOffSchedule.NEVER,
+    ImmichApplication.appContext!!.getString(R.string.display_screen_off),
+    ImmichApplication.appContext!!.getString(R.string.display_screen_off_desc)) {
+    override fun key() = "displayScreenOff"
+    override fun fromPrefValue(prefValue: String): ScreenOffSchedule =
+        ScreenOffSchedule.entries.firstOrNull { it.name == prefValue } ?: defaultValue
+    override fun getEnumEntries(): Array<ScreenOffSchedule> = ScreenOffSchedule.entries.toTypedArray()
+}
+// internal: the weather location resolved to "location\tlatitude\tlongitude\ttimezone" for sun times
+data object DISPLAY_GEO_CACHE : StringPref("", "", "") {
+    override fun key() = "displayGeoCache"
+}
+
 // internal: id of the album the user last opened (used to seed the home background on launch)
 data object LAST_SELECTED_ALBUM : StringPref("", "", "") {
     override fun key() = "lastSelectedAlbum"
@@ -720,6 +771,10 @@ data object GalleryPrefScreen : PrefScreen(ImmichApplication.appContext!!.getStr
 
 data object WeatherPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.weather), "weather",
     listOf(PrefCategory("", listOf(WEATHER_LOCATION, WEATHER_USE_FAHRENHEIT, WEATHER_ANIMATED_BACKGROUND))))
+
+data object DisplayPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.display_brightness), "display_brightness",
+    listOf(PrefCategory("", listOf(DISPLAY_AUTO_DIM, DISPLAY_NIGHT_SCHEDULE, DISPLAY_DAY_BRIGHTNESS,
+        DISPLAY_NIGHT_BRIGHTNESS, DISPLAY_PREVIEW_NIGHT, DISPLAY_SCREEN_OFF))))
 
 data object DebugPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.debug_settings), "debug",
     children = listOf(PrefCategory("", listOf(DEBUG_MODE, USER_ID))), { prefManager ->

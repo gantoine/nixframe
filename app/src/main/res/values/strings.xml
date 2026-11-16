@@ -364,4 +364,20 @@
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_add_failed">Failed to add to favorites</string>
     <string name="favorite_remove_failed">Failed to remove from favorites</string>
+    <!-- display: auto-dim + overnight screen-off -->
+    <string name="display_brightness">Brightness</string>
+    <string name="display_auto_dim">Dim at night</string>
+    <string name="display_auto_dim_desc">Gradually lower the brightness after dark and raise it again in the morning</string>
+    <string name="display_night_schedule">Night</string>
+    <string name="display_night_schedule_desc">When to dim. Sunset and sunrise are calculated for the weather location.</string>
+    <string name="display_sunset_to_sunrise">Sunset to sunrise</string>
+    <string name="display_day_brightness">Day brightness</string>
+    <string name="display_day_brightness_desc">Screen brightness during the day</string>
+    <string name="display_night_brightness">Night brightness</string>
+    <string name="display_night_brightness_desc">Screen brightness at night. Shaded levels dim the picture below the lowest backlight.</string>
+    <string name="display_preview_night">Preview night brightness</string>
+    <string name="display_preview_night_desc">Shows the night brightness for 15 seconds</string>
+    <string name="display_screen_off">Turn off overnight</string>
+    <string name="display_screen_off_desc">Keep the screen off during these hours (the power button still wakes it)</string>
+    <string name="display_screen_off_never">Never</string>
 </resources>
