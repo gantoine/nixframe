@@ -264,6 +264,16 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         setStartPosition()
     }
 
+    /** Host paused (screen off, another activity on top): stop the player and the auto-advance. */
+    fun onPause() {
+        if (isConfigReady) controller.onPause()
+    }
+
+    /** Host resumed: pick the slideshow back up where it was paused. */
+    fun onResume() {
+        if (isConfigReady) controller.onResume()
+    }
+
     fun onDestroy() {
         ioScope.cancel()
         viewPlugins.forEach { it.plugin.onDestroy(viewPluginContext, it.state) }

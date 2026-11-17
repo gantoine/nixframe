@@ -87,8 +87,7 @@ class ScreenSaverPreviewFragment : MediaSliderFragment(), ScreenSaverAssetLoader
     }
 
     override fun onPause() {
-        // super tears the player down and never rebuilds it, so leave rather than come back to a
-        // dead preview.
+        // A preview is a one-off look: leave rather than resume it when coming back.
         super.onPause()
         if (isAdded) {
             findNavController().popBackStack()

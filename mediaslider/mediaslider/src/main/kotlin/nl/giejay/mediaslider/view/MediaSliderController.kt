@@ -485,6 +485,23 @@ class MediaSliderController(
         stopProgressUpdates()
     }
 
+    /** Suspends playback without tearing anything down; [onResume] restarts it. */
+    fun onPause() {
+        stopPlayer()
+        removeGoToAssetCallbackFromMainHandler()
+    }
+
+    fun onResume() {
+        if (!slideShowPlaying) return
+        setKeepScreenOnFlags()
+        when (currentItemTypeOrNull()) {
+            SliderItemType.IMAGE -> startTimerNextAsset()
+            // the paused video was stopped, so move on rather than sit on a dead player
+            SliderItemType.VIDEO -> if (reverseSlideShowDirection) goToPreviousAsset() else goToNextAsset()
+            null -> {}
+        }
+    }
+
     fun onDestroy() {
         if(this::config.isInitialized){
             config.controllerPlugins.forEach { it.onDestroy(this) }

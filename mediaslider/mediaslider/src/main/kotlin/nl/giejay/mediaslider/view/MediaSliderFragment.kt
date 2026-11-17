@@ -22,13 +22,22 @@ open class MediaSliderFragment : Fragment() {
         view.requestFocus()
     }
 
+    // Pausing (e.g. the screen sleeping) only suspends playback: tearing the slider down here
+    // removed plugin overlays (clock, date) and the auto-advance timer, so after the screen woke
+    // the slideshow sat frozen on one photo without its overlays.
     override fun onPause() {
-        destroyMediaPlayer()
+        view.onPause()
         super.onPause()
     }
 
-    private fun destroyMediaPlayer() {
+    override fun onResume() {
+        super.onResume()
+        view.onResume()
+    }
+
+    override fun onDestroyView() {
         view.onDestroy()
+        super.onDestroyView()
     }
 
     override fun getView(): MediaSliderView {
