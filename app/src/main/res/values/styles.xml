@@ -200,8 +200,11 @@
         <item name="android:layout_height">@dimen/default_image_card_height</item>
     </style>
 
+    <!-- Title laid over the bottom of the photo (see DefaultCardInfoAreaStyle). -->
     <style name="DefaultCardStyle" parent="Widget.Leanback.ImageCardViewStyle">
         <item name="cardBackground">@null</item>
+        <item name="cardType">infoOver</item>
+        <item name="infoVisibility">always</item>
     </style>
 
     <!-- Image-only card (no info bar) for photo/video previews, taller than album cards. -->
@@ -220,13 +223,13 @@
         <item name="imageCardViewImageStyle">@style/ImageOnlyCardImageStyle</item>
     </style>
 
-    <!-- Album/folder card label bar: black translucent (still readable) and shorter than the
-         leanback default gray bar. -->
+    <!-- Album/folder card caption: over the photo on a gradient scrim; the tall top padding
+         gives the fade room so it starts above the text rather than behind it. -->
     <style name="DefaultCardInfoAreaStyle" parent="Widget.Leanback.ImageCardView.InfoAreaStyle">
-        <item name="android:background">#B3000000</item>
+        <item name="android:background">@drawable/card_info_scrim</item>
         <item name="android:minHeight">0dp</item>
-        <item name="android:paddingTop">6dp</item>
-        <item name="android:paddingBottom">6dp</item>
+        <item name="android:paddingTop">28dp</item>
+        <item name="android:paddingBottom">8dp</item>
     </style>
 
     <style name="DefaultCardTheme" parent="Theme.Leanback">

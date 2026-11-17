@@ -4,6 +4,7 @@ import androidx.core.content.ContextCompat
 import android.app.Activity
 import android.content.Context
 import android.view.ContextThemeWrapper
+import android.view.View
 import android.widget.ImageView
 import androidx.leanback.widget.ImageCardView
 import com.bumptech.glide.Glide
@@ -20,9 +21,12 @@ open class CardPresenter(context: Context, style: Int = R.style.DefaultCardTheme
 
         cardView.tag = card
         cardView.titleText = card.title
-        if (card.description != "") {
-            cardView.contentText = card.description
-        }
+        // An empty content line still takes a row under the title (lifting it off the bottom of
+        // the card), so hide it unless there's something to say. Always reset: views are recycled.
+        val description = card.description?.takeIf { it.isNotBlank() }
+        cardView.contentText = description
+        cardView.findViewById<View>(androidx.leanback.R.id.content_text)?.visibility =
+            if (description == null) View.GONE else View.VISIBLE
         setSelected(cardView, card.selected)
     }
 
