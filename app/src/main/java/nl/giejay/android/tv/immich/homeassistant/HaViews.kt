@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.view.View
+import nl.giejay.android.tv.immich.shared.util.FrostedWallpaper
 import kotlin.math.max
 import kotlin.math.min
 
@@ -226,7 +227,11 @@ class FlowLayout(context: Context, private val hGap: Int, private val vGap: Int)
     }
 }
 
-/** Bubble Card's pill: a rounded track with an optional fill (slider brightness, "on" switches). */
+/**
+ * Bubble Card's button, styled like the Frosted Glass theme: a translucent panel with an 18dp
+ * radius, lighter at the top, a hairline light edge, and an optional fill (slider brightness,
+ * "on" switches) clipped to the same shape.
+ */
 class BubblePill(context: Context) : android.widget.FrameLayout(context) {
     var fraction: Float = 0f
         set(value) {
@@ -238,17 +243,15 @@ class BubblePill(context: Context) : android.widget.FrameLayout(context) {
             field = value
             invalidate()
         }
-    var baseColor: Int = 0x1FFFFFFF
-        set(value) {
-            field = value
-            invalidate()
-        }
 
+    private val density = resources.displayMetrics.density
+    private val radius = 18 * density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glass = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = resources.displayMetrics.density
-        color = 0x17FFFFFF
+        strokeWidth = max(1f, density * 0.75f)
+        color = EDGE
     }
     private val rect = RectF()
     private val clip = Path()
@@ -257,11 +260,14 @@ class BubblePill(context: Context) : android.widget.FrameLayout(context) {
         setWillNotDraw(false)
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        glass.shader = LinearGradient(0f, 0f, 0f, h.toFloat(), GLASS_TOP, GLASS_BOTTOM, Shader.TileMode.CLAMP)
+    }
+
     override fun onDraw(canvas: Canvas) {
-        val radius = height / 2f
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        paint.color = baseColor
-        canvas.drawRoundRect(rect, radius, radius, paint)
+        canvas.drawRoundRect(rect, radius, radius, glass)
         if (fraction > 0f && fillColor != 0) {
             canvas.save()
             clip.reset()
@@ -273,5 +279,32 @@ class BubblePill(context: Context) : android.widget.FrameLayout(context) {
         }
         rect.inset(stroke.strokeWidth / 2, stroke.strokeWidth / 2)
         canvas.drawRoundRect(rect, radius, radius, stroke)
+    }
+
+    companion object {
+        const val GLASS_TOP = FrostedWallpaper.GLASS_TOP
+        const val GLASS_BOTTOM = FrostedWallpaper.GLASS_BOTTOM
+        const val EDGE = FrostedWallpaper.EDGE
+    }
+}
+
+/**
+ * One row of a sections grid. When every card in it is hidden (visibility conditions), the row
+ * takes no space at all, padding included, instead of leaving an empty gap.
+ */
+class GridRow(context: Context) : android.widget.LinearLayout(context) {
+    init {
+        orientation = HORIZONTAL
+        isBaselineAligned = false
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val anyShown = (0 until childCount).any { getChildAt(it).let { c -> c.tag != FILLER && c.visibility != View.GONE } }
+        if (anyShown) super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        else setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), 0)
+    }
+
+    companion object {
+        const val FILLER = "grid-row-filler"
     }
 }

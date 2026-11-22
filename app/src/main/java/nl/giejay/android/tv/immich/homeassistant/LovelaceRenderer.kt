@@ -134,8 +134,9 @@ class LovelaceRenderer(
         cards.forEach { cfg ->
             val span = gridColumns(cfg)
             if (row == null || used + span > 12) {
-                row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-                box.addView(row, matchWrap(bottom = 8))
+                // spacing is the row's own padding, so a row whose cards are all hidden collapses fully
+                row = GridRow(context).apply { setPadding(0, 0, 0, dp(8)) }
+                box.addView(row, matchWrap())
                 used = 0
             }
             val cardWidth = ((widthPx + gap) * span / 12) - gap
@@ -147,7 +148,7 @@ class LovelaceRenderer(
         }
         // pad the last row so a lone half-width tile stays half width
         // MATCH_PARENT like the cards: a fixed-height filler makes LinearLayout size the whole row to it
-        row?.let { if (used in 1..11) it.addView(View(context), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, (12 - used).toFloat())) }
+        row?.let { if (used in 1..11) it.addView(View(context).apply { tag = GridRow.FILLER }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, (12 - used).toFloat())) }
         return box
     }
 
@@ -219,7 +220,7 @@ class LovelaceRenderer(
             minimumHeight = dp(62)
         }
         val badge = FrameLayout(context)
-        val circle = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        val circle = iconTile(36)
         badge.background = circle
         val icon = MdiIcons.view(context, 20f, HaFormat.COLOR_INACTIVE)
         badge.addView(icon, FrameLayout.LayoutParams(dp(36), dp(36)))
@@ -240,7 +241,7 @@ class LovelaceRenderer(
             }
             val accent = accent(cfg, e)
             icon.setTextColor(accent)
-            circle.setColor(withAlpha(accent, if (accent == HaFormat.COLOR_INACTIVE) 0x1F else 0x38))
+            circle.setColor(if (accent == HaFormat.COLOR_INACTIVE) ICON_BG else withAlpha(accent, 0x38))
             MdiIcons.set(icon, HaFormat.iconName(e, cfg.str("icon")))
             state.text = stateContent(cfg, e)
             state.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else SECONDARY)
@@ -947,7 +948,7 @@ class LovelaceRenderer(
     /** Mushroom's icon "shape": a tinted circle holding an icon or a round entity picture. */
     private inner class MushroomShape(val sizeDp: Int) {
         val view = FrameLayout(context)
-        private val background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        private val background = iconTile(sizeDp)
         private val icon = MdiIcons.view(context, sizeDp * 0.55f, HaFormat.COLOR_INACTIVE)
         private val picture = ImageView(context).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -962,7 +963,7 @@ class LovelaceRenderer(
 
         fun color(c: Int) {
             icon.setTextColor(c)
-            background.setColor(withAlpha(c, if (c == HaFormat.COLOR_INACTIVE) 0x1F else 0x38))
+            background.setColor(if (c == HaFormat.COLOR_INACTIVE) ICON_BG else withAlpha(c, 0x38))
         }
 
         fun icon(name: String?) {
@@ -1249,7 +1250,7 @@ class LovelaceRenderer(
             parts.state.setTextColor(if (HaFormat.isAlert(e)) HaFormat.RED else SECONDARY)
             // slider: fill to the brightness/position; switch: the whole pill tints when on
             val active = HaFormat.isActive(e)
-            parts.pill.fillColor = withAlpha(color, 0x4D)
+            parts.pill.fillColor = withAlpha(color, 0x47)
             parts.pill.fraction = when {
                 !active -> 0f
                 buttonType == "slider" && e.domain == "light" -> ((e.attrDouble("brightness") ?: 255.0) / 255.0).toFloat()
@@ -1298,8 +1299,8 @@ class LovelaceRenderer(
         }
         row.addView(text(15f, Color.WHITE, bold = true).apply { text = cfg.str("name").orEmpty() }, wrap())
         row.addView(View(context).apply {
-            background = GradientDrawable().apply { cornerRadius = dp(2).toFloat(); setColor(0x26FFFFFF) }
-        }, LinearLayout.LayoutParams(0, dp(3), 1f).apply { leftMargin = dp(12); rightMargin = dp(4) })
+            background = GradientDrawable().apply { cornerRadius = dp(1).toFloat(); setColor(0x29EAEBEE) }
+        }, LinearLayout.LayoutParams(0, dp(2), 1f).apply { leftMargin = dp(12); rightMargin = dp(4) })
         cfg.arr("sub_button")?.mapNotNull { it.asObj() }?.forEach { sub -> bubbleSubButton(sub)?.let { row.addView(it, wrap(left = 6)) } }
         return row
     }
@@ -1310,7 +1311,7 @@ class LovelaceRenderer(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(8), dp(4), dp(10), dp(4))
             if (cfg.bool("show_background", true)) {
-                background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(0x1FFFFFFF) }
+                background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(0x1AFFFFFF) }
             }
         }
         val icon = MdiIcons.view(context, 16f, HaFormat.COLOR_INACTIVE)
@@ -1367,11 +1368,7 @@ class LovelaceRenderer(
     private fun chip(id: String, item: JsonObject, compact: Boolean): View {
         val chip = horizontal().apply {
             gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                cornerRadius = dp(18).toFloat()
-                setColor(0x1FFFFFFF)
-                setStroke(dp(1), 0x1AFFFFFF)
-            }
+            background = glass()
             setPadding(dp(10), dp(5), dp(12), dp(5))
         }
         val icon = MdiIcons.view(context, 18f, HaFormat.COLOR_INACTIVE)
@@ -1536,15 +1533,23 @@ class LovelaceRenderer(
         setPadding(dp(16), dp(14), dp(16), dp(14))
     }
 
-    /** Frosted card: lighter at the top, a hairline edge; [tint] washes it with a state colour. */
+    /**
+     * Frosted Glass card (the HA theme of the same name): a near-transparent panel over the blurred
+     * wallpaper, lighter at the top, with a hairline light edge. [tint] washes it with a state colour.
+     */
     private fun glass(tint: Int? = null) = GradientDrawable(
         GradientDrawable.Orientation.TOP_BOTTOM,
-        if (tint == null) intArrayOf(0x21FFFFFF, 0x12FFFFFF)
-        else intArrayOf(withAlpha(tint, 0x40), withAlpha(tint, 0x1A))
+        if (tint == null) intArrayOf(BubblePill.GLASS_TOP, BubblePill.GLASS_BOTTOM)
+        else intArrayOf(withAlpha(tint, 0x3D), withAlpha(tint, 0x17))
     ).apply {
         cornerRadius = dp(18).toFloat()
-        setStroke(dp(1), if (tint == null) 0x17FFFFFF else withAlpha(tint, 0x40))
+        setStroke(hairline(), if (tint == null) BubblePill.EDGE else withAlpha(tint, 0x66))
     }
+
+    private fun hairline() = maxOf(1, (density * 0.75f).roundToInt())
+
+    /** Frosted Glass icon backgrounds are rounded squares (14px on a 40px icon), not circles. */
+    private fun iconTile(sizeDp: Int) = GradientDrawable().apply { cornerRadius = dp(sizeDp) * 0.35f }
 
     private fun vertical() = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     // no baseline alignment: it shifts icon shapes up to line up with the text's baseline
@@ -1584,9 +1589,10 @@ class LovelaceRenderer(
         }
 
     companion object {
-        private const val SECONDARY = 0xB3FFFFFF.toInt()
-        private const val LABEL = 0x8CFFFFFF.toInt()
-        private const val PRIMARY = 0xFF4BA3F5.toInt()
+        private const val SECONDARY = 0xB8EAEBEE.toInt()
+        private const val LABEL = 0x99EAEBEE.toInt()
+        private const val PRIMARY = 0xFF7AA2BE.toInt()
+        private const val ICON_BG = 0x1CFFFFFF
         private val SERIES = intArrayOf(0xFF4BA3F5.toInt(), 0xFFFF9800.toInt(), 0xFF4CC38A.toInt(), 0xFFB27CF0.toInt(), 0xFFF0626B.toInt(), 0xFF2BC8E0.toInt())
         private val TOGGLES = setOf("light", "switch", "input_boolean", "fan")
 

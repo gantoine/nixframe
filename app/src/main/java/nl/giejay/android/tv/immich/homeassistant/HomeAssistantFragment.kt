@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,6 +30,7 @@ import nl.giejay.android.tv.immich.shared.prefs.HA_DASHBOARD
 import nl.giejay.android.tv.immich.shared.prefs.HA_TOKEN
 import nl.giejay.android.tv.immich.shared.prefs.HA_URL
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
+import nl.giejay.android.tv.immich.shared.util.FrostedWallpaper
 import nl.giejay.mediaslider.view.SafeTextClock
 import timber.log.Timber
 import java.time.Instant
@@ -48,6 +50,7 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
     private lateinit var badge: TextView
     private lateinit var scroll: ScrollView
     private lateinit var content: LinearLayout
+    private lateinit var wallpaper: ImageView
 
     private var connection: HaConnection? = null
     private var renderer: LovelaceRenderer? = null
@@ -69,6 +72,12 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
             handler.postDelayed(this, HISTORY_REFRESH_MS)
         }
     }
+    private val wallpaperTick = object : Runnable {
+        override fun run() {
+            FrostedWallpaper.load(this@HomeAssistantFragment, wallpaper)
+            handler.postDelayed(this, FrostedWallpaper.REFRESH_MS)
+        }
+    }
     private val minuteTick = object : Runnable {
         override fun run() {
             renderer?.refreshAll()
@@ -85,6 +94,10 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
             isFocusableInTouchMode = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
+        // Frosted Glass: a blurred library photo behind the glass cards
+        wallpaper = FrostedWallpaper.imageView(context)
+        root.addView(wallpaper, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(FrostedWallpaper.scrim(context), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         scroll = ScrollView(context).apply {
             isFocusable = true
             isFocusableInTouchMode = true
@@ -143,6 +156,7 @@ class HomeAssistantFragment : Fragment(), BrowseSupportFragment.MainFragmentAdap
         if (renderer == null) showStatus(getString(R.string.ha_connecting))
         connection = HaConnection(client, url, token, this).also { it.start() }
         handler.postDelayed(minuteTick, 60_000L)
+        handler.post(wallpaperTick)
     }
 
     override fun onStop() {
