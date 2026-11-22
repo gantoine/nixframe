@@ -5,7 +5,6 @@ import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.android.tv.immich.api.util.ApiUtil
 import nl.giejay.android.tv.immich.api.model.Asset
-import nl.giejay.android.tv.immich.card.Card
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_LOAD_EDITED_PHOTO
@@ -141,21 +140,4 @@ fun Asset.getAspectRatio(): Double? {
         this.exifInfo.exifImageWidth.toDouble() / this.exifInfo.exifImageHeight.toDouble()
     else
         null
-}
-
-fun List<Asset>.toCards(): List<Card> {
-    return this.map {
-        it.toCard()
-    }
-}
-
-fun Asset.toCard(): Card {
-    // Photo/video previews render image-only (no info bar) via the mainOnly card type. Album/folder/
-    // people cards keep their labels.
-    return Card("",
-        this.exifInfo?.description ?: "",
-        this.id,
-        ApiUtil.getThumbnailUrl(this.id, "thumbnail"),
-        ApiUtil.getThumbnailUrl(this.id, "preview"),
-        imageOnly = true)
 }

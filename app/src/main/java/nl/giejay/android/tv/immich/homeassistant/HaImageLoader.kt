@@ -32,19 +32,25 @@ class HaImageLoader(
         else -> null
     }
 
-    fun load(path: String, into: ImageView, targetWidthPx: Int, circle: Boolean = false) {
+    /** [onResult] (main thread) says whether a picture arrived; not called if superseded. */
+    fun load(path: String, into: ImageView, targetWidthPx: Int, circle: Boolean = false, onResult: ((Boolean) -> Unit)? = null) {
         val url = resolve(path) ?: return
         val httpUrl = HttpUrl.parse(url) ?: return
         into.setTag(TAG_KEY, path)
         scope.launch {
-            val bitmap = withContext(Dispatchers.IO) { fetch(httpUrl, targetWidthPx) } ?: return@launch
+            val bitmap = withContext(Dispatchers.IO) { fetch(httpUrl, targetWidthPx) }
             // the view may have been re-pointed at another image meanwhile
             if (into.getTag(TAG_KEY) != path) return@launch
+            if (bitmap == null) {
+                onResult?.invoke(false)
+                return@launch
+            }
             if (circle) {
                 into.setImageDrawable(RoundedBitmapDrawableFactory.create(into.resources, bitmap).apply { isCircular = true })
             } else {
                 into.setImageBitmap(bitmap)
             }
+            onResult?.invoke(true)
         }
     }
 

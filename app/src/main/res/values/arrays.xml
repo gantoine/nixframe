@@ -62,15 +62,7 @@
         <item>600</item>
     </string-array>
 
-    <array name="meta_data_alignment_labels">
-        <item>@string/left</item>
-        <item>@string/right</item>
-    </array>
 
-    <array name="meta_data_alignment_keys">
-        <item>LEFT</item>
-        <item>RIGHT</item>
-    </array>
     <string-array name="animation_speed_ms">
         <item>0</item>
         <item>100</item>
@@ -84,10 +76,10 @@
     </string-array>
 
     <string-array name="glide_transformation_labels">
-        <item>Center Inside (keep image width/height)</item>
-        <item>Center Crop (fit screen)</item>
-        <item>Safe Center Crop (max crop percentage)</item>
-        <item>Orientation Aware Crop (fill matching orientation)</item>
+        <item>Fit (the whole photo shows)</item>
+        <item>Fill (cropped to the screen)</item>
+        <item>Safe fill (crops no more than the most height and width cropped)</item>
+        <item>Fill when the orientation matches (else fit)</item>
     </string-array>
 
     <array name="glide_transformation_keys">
@@ -97,117 +89,18 @@
         <item>ORIENTATION_AWARE_CROP</item>
     </array>
 
-    <string-array name="albums_order">
-        <item>@string/order_last_updated</item>
-        <item>@string/order_alphabetically_az</item>
-        <item>@string/order_alphabetically_za</item>
-        <item>@string/order_least_updated</item>
-    </string-array>
 
-    <string-array name="albums_order_keys">
-        <item>LAST_UPDATED</item>
-        <item>ALPHABETICALLY_A_Z</item>
-        <item>ALPHABETICALLY_Z_A</item>
-        <item>LEAST_UPDATED</item>
-    </string-array>
 
-    <string-array name="photos_order">
-        <item>@string/order_newest_oldest</item>
-        <item>@string/order_oldest_newest</item>
-        <item>@string/order_alphabetically_az</item>
-        <item>@string/order_alphabetically_za</item>
-    </string-array>
 
-    <string-array name="content_type">
-        <item>@string/content_type_all</item>
-        <item>@string/content_type_image</item>
-        <item>@string/content_type_video</item>
-    </string-array>
 
-    <string-array name="content_type_keys">
-        <item>ALL</item>
-        <item>IMAGE</item>
-        <item>VIDEO</item>
-    </string-array>
 
-    <string-array name="photos_order_keys">
-        <item>NEWEST_OLDEST</item>
-        <item>OLDEST_NEWEST</item>
-        <item>ALPHABETICALLY_A_Z</item>
-        <item>ALPHABETICALLY_Z_A</item>
-    </string-array>
 
-    <string-array name="all_assets_order">
-        <item>@string/order_newest_oldest</item>
-        <item>@string/order_oldest_newest</item>
-    </string-array>
 
-    <string-array name="all_assets_order_keys">
-        <item>NEWEST_OLDEST</item>
-        <item>OLDEST_NEWEST</item>
-    </string-array>
 
-    <string-array name="screensaver_type_keys">
-        <item>ALBUMS</item>
-        <item>RANDOM</item>
-        <item>RECENT</item>
-        <item>SIMILAR_TIME_PERIOD</item>
-    </string-array>
 
-    <string-array name="screensaver_type_values">
-        <item>@string/albums</item>
-        <item>@string/random</item>
-        <item>@string/recent</item>
-        <item>@string/seasonal</item>
-    </string-array>
 
-    <string-array name="recent_assets_months_back">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-        <item>5</item>
-        <item>6</item>
-        <item>7</item>
-        <item>8</item>
-        <item>9</item>
-        <item>10</item>
-        <item>11</item>
-        <item>12</item>
-    </string-array>
 
-    <string-array name="similar_assets_period_days">
-        <item>1</item>
-        <item>3</item>
-        <item>5</item>
-        <item>10</item>
-        <item>20</item>
-        <item>30</item>
-        <item>40</item>
-        <item>50</item>
-        <item>60</item>
-        <item>90</item>
-    </string-array>
 
-    <string-array name="similar_assets_years_back">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-        <item>5</item>
-        <item>6</item>
-        <item>7</item>
-        <item>8</item>
-        <item>9</item>
-        <item>10</item>
-        <item>15</item>
-        <item>20</item>
-        <item>25</item>
-        <item>30</item>
-        <item>40</item>
-        <item>50</item>
-        <item>100</item>
-    </string-array>
 
     <string-array name="display_day_brightness_titles">
         <item>100%</item>

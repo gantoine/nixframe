@@ -21,8 +21,8 @@ import nl.giejay.android.tv.immich.shared.prefs.DISPLAY_NIGHT_BRIGHTNESS
 import nl.giejay.android.tv.immich.shared.prefs.DISPLAY_NIGHT_SCHEDULE
 import nl.giejay.android.tv.immich.shared.prefs.DISPLAY_SCREEN_OFF
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
-import nl.giejay.android.tv.immich.shared.prefs.WEATHER_LOCATION
-import nl.giejay.android.tv.immich.weather.WeatherRepository
+import nl.giejay.android.tv.immich.shared.prefs.DISPLAY_LOCATION
+
 import timber.log.Timber
 import java.util.TimeZone
 import kotlin.math.abs
@@ -30,19 +30,19 @@ import kotlin.math.abs
 /**
  * Dims the screen after dark and (optionally) keeps it off overnight.
  *
- * The frame has no ambient-light sensor, so brightness follows sunset/sunrise at the weather
+ * The frame has no ambient-light sensor, so brightness follows sunset/sunrise at the display
  * location (or a fixed schedule). The backlight is set through Android's brightness setting; below
  * its floor a black overlay window ("shade") dims further. Times use the location's time zone,
  * not the device's (the frame's clock is often left on GMT).
  *
- * Re-evaluated every 30 seconds and whenever a display/weather setting changes.
+ * Re-evaluated every 30 seconds and whenever a display setting changes.
  */
 object DisplayController {
     private const val TICK_MS = 30_000L
     private const val PREVIEW_MS = 15_000L
     private const val GEOCODE_RETRY_MS = 15 * 60_000L
 
-    /** Fallback night when sunset/sunrise can't be computed (no weather location set). */
+    /** Fallback night when sunset/sunrise can't be computed (no display location set). */
     private val FALLBACK_NIGHT = NightSchedule.H21_07
 
     /** True during the overnight screen-off window; polled by ActivitySensor. */
@@ -77,7 +77,7 @@ object DisplayController {
 
     // held strongly: SharedPreferences only keeps weak references to listeners
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key != null && (key.startsWith("display") || key == WEATHER_LOCATION.key())) {
+        if (key != null && (key.startsWith("display") || key == DISPLAY_LOCATION.key())) {
             handler.post(tick)
         }
     }
@@ -232,9 +232,9 @@ object DisplayController {
         }
     }
 
-    /** The weather location's coordinates and time zone, resolved once in the background and cached. */
+    /** The display location's coordinates and time zone, resolved once in the background and cached. */
     private fun location(now: Long): Geo? {
-        val location = PreferenceManager.get(WEATHER_LOCATION).trim()
+        val location = PreferenceManager.get(DISPLAY_LOCATION).trim()
         if (location.isEmpty()) return null
         val cached = Geo.parse(PreferenceManager.get(DISPLAY_GEO_CACHE))
         if (cached?.location == location) return cached
@@ -243,7 +243,7 @@ object DisplayController {
             resolvingFor = location
             lastGeocodeAttempt = now
             scope.launch {
-                val result = WeatherRepository.geocode(location) ?: return@launch
+                val result = Geocoder.geocode(location) ?: return@launch
                 val geo = Geo(location, result.latitude, result.longitude, result.timezone?.let(TimeZone::getTimeZone))
                 Timber.i("Display schedule location: %s (%s)", geo.location, geo.timeZone?.id)
                 handler.post { PreferenceManager.save(DISPLAY_GEO_CACHE, geo.serialize()) }

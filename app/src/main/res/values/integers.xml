@@ -14,5 +14,4 @@
   ~ limitations under the License.
   -->
 <resources>
-    <integer name="button_focused_animation_duration_ms">150</integer>
 </resources>

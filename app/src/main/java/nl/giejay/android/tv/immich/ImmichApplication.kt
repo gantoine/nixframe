@@ -18,13 +18,9 @@ package nl.giejay.android.tv.immich
 import android.app.Application
 import android.content.Context
 import android.os.Handler
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.multidex.MultiDex
 import nl.giejay.android.tv.immich.api.util.Tls12SocketFactory
 import nl.giejay.android.tv.immich.display.DisplayController
-import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.sensors.ActivitySensor
 import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
@@ -87,14 +83,6 @@ class ImmichApplication : Application() {
 
         // Start polling the (Nixplay) motion sensor to drive the display wakelock.
         this.mainHandler.post(sensorServiceRunnable)
-
-        // Android TV home-screen channels: no-ops below API 26 (O), so inert on KitKat frames.
-        HomeScreenChannelManager.initSubscriptions()
-        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) {
-                HomeScreenChannelManager.scheduleRefresh("app_foreground")
-            }
-        })
     }
 
     companion object {

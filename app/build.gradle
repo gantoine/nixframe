@@ -45,7 +45,7 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testOptions.unitTests.includeAndroidResources = true
 
-        // Optional built-in Unsplash access key for the Gallery tab, so it needn't be typed with a
+        // Optional built-in Unsplash access key for the art gallery source, so it needn't be typed with a
         // remote. Read from the gitignored local.properties (unsplash.accessKey=...) or the
         // UNSPLASH_ACCESS_KEY env var — never committed. Only the access key ships in the APK.
         // Settings > Gallery overrides it.
@@ -55,7 +55,7 @@ android {
         def unsplashKey = localProps.getProperty('unsplash.accessKey') ?: System.getenv('UNSPLASH_ACCESS_KEY') ?: ''
         buildConfigField "String", "UNSPLASH_ACCESS_KEY", "\"${unsplashKey}\""
 
-        // Optional Home Assistant defaults for the Home tab (same idea: typing a long-lived token
+        // Optional Home Assistant defaults for the ambient screens (same idea: typing a long-lived token
         // with a remote is impractical). homeassistant.url / .token / .dashboard in local.properties
         // or HA_URL / HA_TOKEN / HA_DASHBOARD env vars. Settings > Home Assistant overrides them.
         def haUrl = localProps.getProperty('homeassistant.url') ?: System.getenv('HA_URL') ?: ''
@@ -129,9 +129,8 @@ dependencies {
     implementation 'org.conscrypt:conscrypt-android:2.5.2'
 
     // AndroidX libraries — pinned to the last versions that still support minSdk 19 (KitKat).
-    // leanback core 1.1.0-rc01 is minSdk 17; we need 1.1.x for the *Compat preference
-    // fragments the settings UI uses. leanback-preference 1.1.0-rc01 declares minSdk 21,
-    // overridden in the manifest (it is thin fragment glue with no real 21-only API use).
+    // leanback core 1.1.0-rc01 is minSdk 17 and supplies Theme.AppCompat.Leanback and the
+    // GuidedStep sign-in screens.
     def leanback_version = "1.1.0-rc01"
     def fragment_version = "1.6.2"
     implementation "androidx.appcompat:appcompat:1.6.1"
@@ -141,10 +140,8 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
     implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
     implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
-    // preference 1.1.1 (minSdk 14) provides attrs like useSimpleSummaryProvider / SeekBar min
-    // that leanback-preference 1.0.0's transitive preference 1.0.0 lacks. Known-good combo.
+    // Only for PreferenceManager.getDefaultSharedPreferences (the settings screen is ambient.SettingsView).
     implementation "androidx.preference:preference-ktx:1.1.1"
-    implementation "androidx.leanback:leanback-preference:$leanback_version"
     // Force OkHttp down to the last KitKat-compatible branch; Glide/Retrofit pull newer.
     configurations.all {
         resolutionStrategy {
@@ -159,10 +156,6 @@ dependencies {
     // Work library used for simplifying work done in the background
 //    def work_version = "2.7.1"
 //    implementation "androidx.work:work-runtime:$work_version"
-
-    // TV provider library used for Android TV home-screen channels. Declares minSdk 21 (overridden in
-    // the manifest): every use is behind an API 26 (O) check, so it is never touched on KitKat.
-    implementation 'androidx.tvprovider:tvprovider:1.0.0'
 
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
     implementation group: 'io.reactivex.rxjava3', name: 'rxjava', version: '3.1.8'

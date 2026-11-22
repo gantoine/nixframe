@@ -80,6 +80,11 @@ public class ActivitySensor {
         }
     }
 
+    /** Something worth seeing happened (doorbell, alarm): wake the screen as motion would. */
+    public void wakeForTakeover() {
+        sensorServiceCallback.wakeUp();
+    }
+
     public void resetMotionSensor() {
         instance.resetMotionSensor();
     }

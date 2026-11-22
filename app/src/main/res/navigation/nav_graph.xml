@@ -14,11 +14,13 @@
   ~ limitations under the License.
   -->
 
+<!-- Signed in, the app is one ambient screen (photos, glance, doorbell, what to show, settings);
+     sign-in is the only other place. -->
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/homeFragment"
+    app:startDestination="@id/ambientFragment"
     tools:ignore="UnusedNavigation">
 
     <action
@@ -26,160 +28,13 @@
         app:destination="@id/authFragment" />
 
     <action
-        android:id="@+id/action_global_homeFragment"
-        app:destination="@id/homeFragment" />
-
-    <action
-        android:id="@+id/action_global_to_settings_dialog"
-        app:destination="@id/settings_dialog_fragment" />
-
-    <action
-        android:id="@+id/action_global_album_fragment"
-        app:destination="@id/albumFragment" />
-
-    <action
-        android:id="@+id/action_global_people_fragment"
-        app:destination="@id/peopleFragment" />
-
-    <action
-        android:id="@+id/action_to_photo_slider"
-        app:destination="@id/photoSlider" />
-
-    <action
-        android:id="@+id/action_to_metadata_fragment"
-        app:destination="@id/metaDataCustomizer" />
-
-    <action
-        android:id="@+id/action_global_screensaver_preview"
-        app:destination="@id/screenSaverPreviewFragment" />
-
-    <!--    <fragment-->
-    <!--        android:id="@+id/playbackFragment"-->
-    <!--        android:name="nl.giejay.android.tv.immich.playback.PlaybackFragment"-->
-    <!--        android:label="PlaybackFragment">-->
-    <!--        <argument-->
-    <!--            android:name="video"-->
-    <!--            app:argType="nl.giejay.android.tv.immich.shared.datamodel.Video" />-->
-    <!--        <action-->
-    <!--            android:id="@+id/action_playbackFragment_to_playbackErrorFragment"-->
-    <!--            app:destination="@id/playbackErrorFragment" />-->
-    <!--    </fragment>-->
+        android:id="@+id/action_global_ambientFragment"
+        app:destination="@id/ambientFragment" />
 
     <fragment
-        android:id="@+id/albumDetailsFragment"
-        android:name="nl.giejay.android.tv.immich.album.AlbumDetailsFragment"
-        android:label="AlbumDetailsFragment">
-        <argument
-            android:name="albumId"
-            app:argType="string" />
-        <argument
-            android:name="albumName"
-            app:argType="string" />
-        <action
-            android:id="@+id/action_details_to_album_fragment"
-            app:destination="@id/albumFragment" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/personAssetsFragment"
-        android:name="nl.giejay.android.tv.immich.people.PersonAssetsFragment"
-        android:label="PersonAssetsFragment">
-        <argument
-            android:name="personId"
-            app:argType="string" />
-        <argument
-            android:name="personName"
-            app:argType="string" />
-        <action
-            android:id="@+id/action_details_to_person_fragment"
-            app:destination="@id/peopleFragment" />
-    </fragment>
-
-    <!-- All assets taken in one city, opened from the Places page -->
-    <fragment
-        android:id="@+id/placeAssetsFragment"
-        android:name="nl.giejay.android.tv.immich.places.PlaceAssetsFragment"
-        android:label="PlaceAssetsFragment">
-        <argument
-            android:name="city"
-            app:argType="string" />
-    </fragment>
-
-    <!-- A partner's timeline: the regular Timeline, standalone and filtered to that user -->
-    <fragment
-        android:id="@+id/partnerTimelineFragment"
-        android:name="nl.giejay.android.tv.immich.timeline.TimelineFragment"
-        android:label="PartnerTimelineFragment">
-        <argument
-            android:name="userId"
-            app:argType="string" />
-        <argument
-            android:name="userName"
-            app:argType="string" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/peopleFragment"
-        android:name="nl.giejay.android.tv.immich.people.PeopleFragment"
-        android:label="PeopleFragment">
-
-        <argument
-            android:name="selectionMode"
-            app:argType="boolean" />
-
-        <argument
-            android:name="selectionType"
-            app:argType="string" />
-
-        <argument
-            android:name="returnTo"
-            android:defaultValue=""
-            app:argType="string" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/metaDataCustomizer"
-        android:name="nl.giejay.android.tv.immich.settings.MetaDataCustomizerFragment"
-        android:label="MetaDataFragment">
-        <argument
-            android:name="screen"
-            app:argType="nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/allAssetsFragment"
-        android:name="nl.giejay.android.tv.immich.assets.AllAssetFragment"
-        android:label="AllAssetsFragment">
-    </fragment>
-
-    <fragment
-        android:id="@+id/screenSaverPreviewFragment"
-        android:name="nl.giejay.android.tv.immich.screensaver.ScreenSaverPreviewFragment"
-        android:label="ScreenSaverPreview" />
-
-    <fragment
-        android:id="@+id/photoSlider"
-        android:name="nl.giejay.android.tv.immich.slider.ImmichMediaSlider"
-        android:label="PhotoSlider">
-        <argument
-            android:name="timelineView"
-            android:defaultValue="false"
-            app:argType="boolean" />
-        <!-- false for another user's assets (a partner's timeline): they can't be favourited -->
-        <argument
-            android:name="allowFavorite"
-            android:defaultValue="true"
-            app:argType="boolean" />
-        <!-- start playing the slideshow immediately (Gallery) -->
-        <argument
-            android:name="autoPlay"
-            android:defaultValue="false"
-            app:argType="boolean" />
-        <action
-            android:id="@+id/photo_slider_to_album_details_fragment"
-            app:destination="@id/albumDetailsFragment" />
-    </fragment>
-
+        android:id="@+id/ambientFragment"
+        android:name="nl.giejay.android.tv.immich.ambient.AmbientFragment"
+        android:label="Ambient" />
 
     <fragment
         android:id="@+id/authFragment"
@@ -190,119 +45,8 @@
             app:destination="@id/authFragmentStep2" />
     </fragment>
 
-
-    <fragment
-        android:id="@+id/donateFragment"
-        android:name="nl.giejay.android.tv.immich.shared.donate.DonateFragment"
-        android:label="Donate">
-    </fragment>
-
     <fragment
         android:id="@+id/authFragmentStep2"
         android:name="nl.giejay.android.tv.immich.auth.AuthFragmentStep2"
-        android:label="Authentication"></fragment>
-
-    <!--    <fragment-->
-    <!--        android:id="@+id/playbackErrorFragment"-->
-    <!--        android:name="nl.giejay.android.tv.immich.playback.PlaybackErrorFragment"-->
-    <!--        android:label="PlaybackErrorFragment">-->
-    <!--        <argument-->
-    <!--            android:name="video"-->
-    <!--            app:argType="nl.giejay.android.tv.immich.shared.datamodel.Video" />-->
-    <!--        <argument-->
-    <!--            android:name="error"-->
-    <!--            app:argType="java.lang.Exception" />-->
-    <!--        <action-->
-    <!--            app:popUpTo="@+id/playbackFragment"-->
-    <!--            app:popUpToInclusive="true"-->
-    <!--            android:id="@+id/action_playbackErrorFragment_to_playbackFragment"-->
-    <!--            app:destination="@id/playbackFragment" />-->
-    <!--        <action-->
-    <!--            app:popUpTo="@+id/playbackFragment"-->
-    <!--            app:popUpToInclusive="true"-->
-    <!--            android:id="@+id/action_playbackErrorFragment_to_browseFragment"-->
-    <!--            app:destination="@id/browseFragment" />-->
-    <!--    </fragment>-->
-    <fragment
-        android:id="@+id/albumFragment"
-        android:name="nl.giejay.android.tv.immich.album.AlbumFragment"
-        android:label="AlbumFragment">
-
-        <argument
-            android:name="selectionMode"
-            app:argType="boolean" />
-
-        <argument
-            android:name="selectionType"
-            app:argType="string" />
-
-        <argument
-            android:name="returnTo"
-            android:defaultValue=""
-            app:argType="string" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/homeFragment"
-        android:name="nl.giejay.android.tv.immich.home.HomeFragment"
-        android:label="HomeFragment">
-        <action
-            android:id="@+id/action_homeFragment_to_albumDetailsFragment"
-            app:destination="@id/albumDetailsFragment" />
-        <action
-            android:id="@+id/action_homeFragment_to_personAssetsFragment"
-            app:destination="@id/personAssetsFragment" />
-        <action
-            android:id="@+id/action_homeFragment_to_placeAssetsFragment"
-            app:destination="@id/placeAssetsFragment" />
-        <action
-            android:id="@+id/action_homeFragment_to_partnerTimelineFragment"
-            app:destination="@id/partnerTimelineFragment" />
-        <action
-            android:id="@+id/action_homeFragment_to_view_settings"
-            app:destination="@id/viewSettings" />
-        <action
-            android:id="@+id/action_homeFragment_to_photo_slider"
-            app:destination="@id/photoSlider" />
-        <action
-            android:id="@+id/action_home_to_donate"
-            app:destination="@id/donateFragment" />
-    </fragment>
-
-    <dialog
-        android:id="@+id/settings_dialog_fragment"
-        android:name="nl.giejay.android.tv.immich.settings.SettingsDialogFragment">
-        <argument
-            android:name="settings_type"
-            app:argType="string" />
-        <argument
-            android:name="albumId"
-            android:defaultValue=""
-            app:argType="string" />
-        <argument
-            android:name="albumName"
-            android:defaultValue=""
-            app:argType="string" />
-        <argument
-            android:name="meta_data_item"
-            android:defaultValue=""
-            app:argType="string" />
-        <argument
-            android:name="meta_data_items"
-            android:defaultValue=""
-            app:argType="string" />
-        <argument
-            android:name="screen"
-            android:defaultValue="VIEWER"
-            app:argType="nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen" />
-        <argument
-            android:name="fullscreen"
-            android:defaultValue="false"
-            app:argType="boolean" />
-    </dialog>
-
-    <fragment
-        android:id="@+id/viewSettings"
-        android:name="nl.giejay.android.tv.immich.settings.PrefSettingsFragment"
-        android:label="ViewSettings"></fragment>
+        android:label="Authentication" />
 </navigation>

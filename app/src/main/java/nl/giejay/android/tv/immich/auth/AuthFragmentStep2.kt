@@ -20,8 +20,9 @@ import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.HOST_NAME
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
-import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ALBUMS
-import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PEOPLE
+import nl.giejay.android.tv.immich.shared.prefs.AMBIENT_ALBUMS
+import nl.giejay.android.tv.immich.shared.prefs.AMBIENT_PINNED_ASSET
+import nl.giejay.android.tv.immich.shared.prefs.AMBIENT_PEOPLE
 import timber.log.Timber
 import kotlin.collections.emptySet
 
@@ -94,14 +95,19 @@ class AuthFragmentStep2 : GuidedStepSupportFragment() {
         Timber.i("Clicked on ${action.title} in step 2, entry valid: ${entry.isValid()}")
         if (action.id == ACTION_CONTINUE) {
             if (entry.isValid()) {
-                PreferenceManager.save(SCREENSAVER_ALBUMS, emptySet())
-                PreferenceManager.save(SCREENSAVER_PEOPLE, emptySet())
+                // picks belong to the previous server
+                PreferenceManager.save(AMBIENT_ALBUMS, emptySet())
+                PreferenceManager.save(AMBIENT_PEOPLE, emptySet())
+                PreferenceManager.save(AMBIENT_PINNED_ASSET, "")
                 PreferenceManager.save(API_KEY, entry.apiKey)
                 PreferenceManager.save(HOST_NAME, entry.hostName)
                 PreferenceManager.save(DISABLE_SSL_VERIFICATION, findActionById(ACTION_CHECK_CERTS)?.isChecked == true)
                 PreferenceManager.save(DEBUG_MODE, findActionById(ACTION_DEBUG_MODE)?.isChecked == true)
                 val navControl = findNavController()
-                navControl.navigate(AuthFragmentStep2Directions.actionGlobalHomeFragment(), NavOptions.Builder().setPopUpTo(R.id.authFragment, true).build())
+                // Opened from the settings, the old ambient screen is under sign-in: replace it too.
+                val fromAmbient = runCatching { navControl.getBackStackEntry(R.id.ambientFragment) }.isSuccess
+                val popTo = if (fromAmbient) R.id.ambientFragment else R.id.authFragment
+                navControl.navigate(AuthFragmentStep2Directions.actionGlobalAmbientFragment(), NavOptions.Builder().setPopUpTo(popTo, true).build())
             } else if (entry.hostName.isEmpty()) {
                 Toast.makeText(activity, getString(R.string.enter_server_url), Toast.LENGTH_SHORT)
                     .show()

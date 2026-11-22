@@ -3,21 +3,15 @@ package nl.giejay.android.tv.immich.api.service
 import nl.giejay.android.tv.immich.api.model.Album
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.api.model.Memory
-import nl.giejay.android.tv.immich.api.model.Partner
 import nl.giejay.android.tv.immich.api.model.PeopleResponse
 import nl.giejay.android.tv.immich.api.model.SearchRequest
 import nl.giejay.android.tv.immich.api.model.SearchResponse
-import nl.giejay.android.tv.immich.api.model.TimeBucketAssetsResponse
-import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
-import nl.giejay.android.tv.immich.api.model.UpdateAssetRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.PUT
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-
 
 interface ApiService {
     @POST("search/metadata")
@@ -35,37 +29,8 @@ interface ApiService {
     @GET("assets/{id}")
     suspend fun getAsset(@Path("id") id: String): Response<Asset>
 
-    /** One representative asset per city (GET /search/cities), used for the Places view. */
-    @GET("search/cities")
-    suspend fun listCities(): Response<List<Asset>>
-
     @GET("people")
     suspend fun listPeople(): Response<PeopleResponse>
-
-    @PUT("assets/{id}")
-    suspend fun updateAsset(@Path("id") id: String, @Body request: UpdateAssetRequest): Response<Asset>
-
-    @GET("partners")
-    suspend fun listPartners(@Query("direction") direction: String = "shared-with"): Response<List<Partner>>
-
-    // VIS-02: default visibility=timeline excludes hidden/archived assets, matching listAssets.
-    // userId selects another user's timeline (a partner); omitted means the signed-in user's own.
-    @GET("timeline/buckets")
-    suspend fun getTimeBuckets(
-        @Query("order") order: String = "desc",
-        @Query("visibility") visibility: String? = "timeline",
-        @Query("withPartners") withPartners: Boolean? = null,
-        @Query("userId") userId: String? = null
-    ): Response<List<TimeBucketSummary>>
-
-    @GET("timeline/bucket")
-    suspend fun getTimeBucket(
-        @Query("timeBucket") timeBucket: String,
-        @Query("order") order: String = "desc",
-        @Query("visibility") visibility: String? = "timeline",
-        @Query("withPartners") withPartners: Boolean? = null,
-        @Query("userId") userId: String? = null
-    ): Response<TimeBucketAssetsResponse>
 
     /** [forDate] = memories shown on that day; null lists all memories (with [order]/[size]). */
     @GET("memories")
@@ -75,9 +40,4 @@ interface ApiService {
         @Query("size") size: Int? = null
     ): Response<List<Memory>>
 
-    @GET("view/folder/unique-paths")
-    suspend fun getUniquePaths(): Response<List<String>>
-
-    @GET("view/folder")
-    suspend fun getAssetsForPath(@Query("path") path: String): Response<List<Asset>>
 }

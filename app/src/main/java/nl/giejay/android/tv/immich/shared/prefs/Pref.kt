@@ -2,29 +2,27 @@ package nl.giejay.android.tv.immich.shared.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.navigation.NavController
-import androidx.preference.CheckBoxPreference
-import androidx.preference.EditTextPreference
-import androidx.preference.ListPreference
-import androidx.preference.Preference
-import androidx.preference.PreferenceManager
-import androidx.preference.SeekBarPreference
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager.sharedPreference
 
-
-sealed class PrefScreen(val title: String, val key: String, val children: List<PrefCategory>, val onViewCreated: (PreferenceManager) -> Unit = {}) {
-    fun findByKey(key: String): Pref<*, *, *>? {
-        return children.firstNotNullOfOrNull { it.findByKey(key) }
-    }
+/** What has to happen for a changed setting to show, applied when the settings screen closes. */
+enum class SettingsEffect {
+    /** Nothing, or the setting applies itself (the display settings, the sleep timer). */
+    NONE,
+    /** Reload the slideshow. */
+    SLIDESHOW,
+    /** Reconnect to Home Assistant. */
+    HOME_ASSISTANT
 }
 
-data class PrefCategory(val title: String, val children: List<Pref<*, *, *>>) {
-    fun findByKey(key: String): Pref<*, *, *>? {
-        return children.find { it.key() == key }
-    }
+/** One section of the settings screen: its rows are [children]'s prefs, in order. */
+sealed class PrefScreen(val title: String, val key: String, val children: List<PrefCategory>, val effect: SettingsEffect = SettingsEffect.NONE) {
+    val prefs: List<Pref<*, *>> get() = children.flatMap { it.children }
 }
 
-sealed class Pref<T, PREF : Preference, PREFTYPE>(val defaultValue: T, val title: String, val summary: String) {
+data class PrefCategory(val title: String, val children: List<Pref<*, *>>)
+
+/** A stored setting: [T] is its type in code, [PREFTYPE] the type it is stored as. */
+sealed class Pref<T, PREFTYPE>(val defaultValue: T, val title: String, val summary: String) {
     abstract fun getValue(sharedPreferences: SharedPreferences): T
 
     open fun key() = javaClass.simpleName.lowercase()
@@ -32,69 +30,53 @@ sealed class Pref<T, PREF : Preference, PREFTYPE>(val defaultValue: T, val title
     open fun fromPrefValue(prefValue: PREFTYPE): T {
         // by default stored pref value and the type of the Pref is the same, but it can differ with for example ListPreferences<Int>
         // stored by String values
+        @Suppress("UNCHECKED_CAST")
         return prefValue as T
     }
 
-    open fun onClick(context: Context, controller: NavController): Boolean {
-        // can be implemented by children
-        return false
-    }
-
+    @Suppress("UNCHECKED_CAST")
     open fun toPrefValue(value: T): PREFTYPE = value as PREFTYPE
-
-    open fun createPreference(context: Context): PREF {
-        val createPref = createPref(context)
-        createPref.key = key()
-        createPref.title = title
-        createPref.setDefaultValue(toPrefValue(defaultValue))
-        createPref.summary = summary
-        return createPref
-    }
-
-    abstract fun createPref(context: Context): PREF
 }
 
-sealed class NotUserEditableStringPref(title: String, summary: String) : Pref<String, Preference, String>("", title, summary) {
-    override fun save(sharedPreferences: SharedPreferences, value: String) {
-        sharedPreference.edit().putString(key(), value).apply()
-    }
-
-    override fun createPref(context: Context): Preference {
-        return Preference(context)
-    }
-
-    override fun getValue(sharedPreferences: SharedPreferences): String {
-        return ""
-    }
+/** What a settings-screen action can do besides its own work. */
+interface ActionHost {
+    val actionContext: Context
+    /** Opens the Immich sign-in screen. */
+    fun openSignIn()
 }
 
-open class ActionPref(val keyOverride: String? = null, title: String, summary: String, val onClick: (Context, NavController) -> Boolean) : Pref<String, Preference, String>("",
-    title,
-    summary) {
-    override fun key(): String {
-        return keyOverride ?: super.key()
-    }
-    override fun save(sharedPreferences: SharedPreferences, value: String) {
+/** A settings row that runs something instead of storing a value. */
+open class ActionPref(
+    val keyOverride: String? = null,
+    title: String,
+    summary: String,
+    val run: (ActionHost) -> Unit,
+    /** False hides the row (and a section left without rows). */
+    val available: (Context) -> Boolean = { true }
+) : Pref<String, String>("", title, summary) {
+    override fun key(): String = keyOverride ?: super.key()
+    override fun save(sharedPreferences: SharedPreferences, value: String) {}
+    override fun getValue(sharedPreferences: SharedPreferences): String = ""
+}
 
-    }
+/** How a free-text setting is changed on the settings screen. */
+enum class TextEditor {
+    /** A text-entry dialog. */
+    DIALOG,
+    /** The sign-in screen (the Immich server and its key are only changed together, validated). */
+    SIGN_IN,
+    /** Shown, not changed. */
+    NONE
+}
 
-    override fun getValue(sharedPreferences: SharedPreferences): String {
-        return ""
-    }
-
-    override fun onClick(context: Context, controller: NavController): Boolean {
-        return onClick.invoke(context, controller)
-    }
-
-    override fun createPref(context: Context): Preference {
-        val preference = Preference(context)
-        preference.key = key()
-        return preference
-    }
+/** How a number is written in a settings row. */
+enum class NumberFormat {
+    /** The option's title from the pref's titles array. */
+    TITLE, SECONDS, MILLIS, MINUTES, PERCENT
 }
 
 sealed class EnumPref<T>(defaultValue: T, title: String, summary: String,
-                         val titlesResourceId: Int, val valuesResourceId: Int) : Pref<T, ListPreference, String>
+                         val titlesResourceId: Int, val valuesResourceId: Int) : Pref<T, String>
     (defaultValue, title, summary) where T : Enum<T> {
     override fun save(sharedPreferences: SharedPreferences, value: T) {
         sharedPreferences.edit().putString(key(), value.toString()).apply()
@@ -109,17 +91,9 @@ sealed class EnumPref<T>(defaultValue: T, title: String, summary: String,
     }
 
     abstract override fun fromPrefValue(prefValue: String): T
-
-    override fun createPref(context: Context): ListPreference {
-        val listPreference = ListPreference(context)
-        listPreference.setEntries(titlesResourceId)
-        listPreference.dialogTitle = summary
-        listPreference.setEntryValues(valuesResourceId)
-        return listPreference
-    }
 }
 
-sealed class EnumByTitlePref<T>(defaultValue: T, title: String, summary: String)  : Pref<T, ListPreference, String>(defaultValue, title, summary) where T : Enum<T>, T : EnumWithTitle {
+sealed class EnumByTitlePref<T>(defaultValue: T, title: String, summary: String)  : Pref<T, String>(defaultValue, title, summary) where T : Enum<T>, T : EnumWithTitle {
     override fun save(sharedPreferences: SharedPreferences, value: T) {
         sharedPreferences.edit().putString(key(), value.toString()).apply()
     }
@@ -135,25 +109,13 @@ sealed class EnumByTitlePref<T>(defaultValue: T, title: String, summary: String)
     }
 
     abstract fun getEnumEntries(): Array<T>
-
-    override fun createPref(context: Context): ListPreference {
-        val listPreference = ListPreference(context)
-        listPreference.entries = getEnumEntries().map { it.getTitle() }.toTypedArray()
-        listPreference.dialogTitle = summary
-        listPreference.entryValues = getEnumEntries().map { it.toString() }.toTypedArray()
-        return listPreference
-    }
 }
 
-sealed class BooleanPref(defaultValue: Boolean, title: String, summary: String) : Pref<Boolean, CheckBoxPreference, Boolean>(defaultValue,
+sealed class BooleanPref(defaultValue: Boolean, title: String, summary: String) : Pref<Boolean, Boolean>(defaultValue,
     title,
     summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Boolean) {
         sharedPreference.edit().putBoolean(key(), value).apply()
-    }
-
-    override fun createPref(context: Context): CheckBoxPreference {
-        return CheckBoxPreference(context)
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Boolean {
@@ -161,15 +123,19 @@ sealed class BooleanPref(defaultValue: Boolean, title: String, summary: String) 
     }
 }
 
-sealed class StringPref(defaultValue: String, title: String, summary: String) : Pref<String, EditTextPreference, String>(defaultValue,
+sealed class StringPref(defaultValue: String, title: String, summary: String) : Pref<String, String>(defaultValue,
     title,
     summary) {
+    /** Never shown in clear on the settings screen (tokens, keys). */
+    open val secret: Boolean = false
+    /** The value used while this one is blank (a build-time default), or "" for none. */
+    open val builtIn: String get() = ""
+    /** Shown for a blank value when there is no [builtIn] one. */
+    open val blankLabel: String = "Not set"
+    open val editor: TextEditor = TextEditor.DIALOG
+
     override fun save(sharedPreferences: SharedPreferences, value: String) {
         sharedPreference.edit().putString(key(), value).apply()
-    }
-
-    override fun createPref(context: Context): EditTextPreference {
-        return EditTextPreference(context)
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): String {
@@ -177,15 +143,11 @@ sealed class StringPref(defaultValue: String, title: String, summary: String) : 
     }
 }
 
-sealed class StringSetPref(defaultValue: Set<String>, title: String, summary: String) : Pref<Set<String>, Preference, Set<String>>(defaultValue,
+sealed class StringSetPref(defaultValue: Set<String>, title: String, summary: String) : Pref<Set<String>, Set<String>>(defaultValue,
     title,
     summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Set<String>) {
         sharedPreference.edit().putStringSet(key(), value).apply()
-    }
-
-    override fun createPref(context: Context): Preference {
-        return Preference(context)
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Set<String> {
@@ -193,13 +155,10 @@ sealed class StringSetPref(defaultValue: Set<String>, title: String, summary: St
     }
 }
 
-sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String) : Pref<Int, SeekBarPreference, Int>(defaultValue, title, summary) {
+/** A percentage, 0 to 100; picked from steps of [step] on the settings screen. */
+sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String, val step: Int = 10) : Pref<Int, Int>(defaultValue, title, summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Int) {
         sharedPreference.edit().putInt(key(), value).apply()
-    }
-
-    override fun createPref(context: Context): SeekBarPreference {
-        return SeekBarPreference(context)
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Int {
@@ -208,7 +167,8 @@ sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String) :
 }
 
 sealed class IntListPref(defaultValue: Int, title: String, summary: String,
-                         val titlesResourceId: Int, val valuesResourceId: Int) : Pref<Int, ListPreference, String>(defaultValue, title, summary) {
+                         val titlesResourceId: Int, val valuesResourceId: Int,
+                         val format: NumberFormat = NumberFormat.TITLE) : Pref<Int, String>(defaultValue, title, summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Int) {
         sharedPreference.edit().putString(key(), value.toString()).apply()
     }
@@ -219,14 +179,6 @@ sealed class IntListPref(defaultValue: Int, title: String, summary: String,
 
     override fun fromPrefValue(prefValue: String): Int {
         return prefValue.toInt()
-    }
-
-    override fun createPref(context: Context): ListPreference {
-        val listPreference = ListPreference(context)
-        listPreference.setEntries(titlesResourceId)
-        listPreference.dialogTitle = summary
-        listPreference.setEntryValues(valuesResourceId)
-        return listPreference
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Int {

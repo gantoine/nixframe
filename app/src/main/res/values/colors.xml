@@ -18,40 +18,21 @@
     <!-- Warm dark gray for backgrounds -->
     <color name="gray_dark">#212121</color>
 
-    <color name="black">#000000</color>
 
     <!-- Colors defined dedicated for TV screen white. -->
     <color name="screen_white">#E8EAED</color>
-    <color name="screen_white_70">#B2E8EAED</color>
     <color name="screen_white_60">#99E8EAED</color>
-    <color name="screen_white_10">#1AE8EAED</color>
 
     <!-- Colors defined dedicated for TV screen black. -->
-    <color name="screen_black">#0E0E0F</color>
 
     <color name="default_text_color">@color/screen_white</color>
     <color name="default_text_color_secondary">@color/screen_white_60</color>
 
-    <color name="default_card_background_color">#263238</color>
-    <color name="default_card_footer_background_color">#37474F</color>
-    <color name="selected_card_footer_background_color">#F0F</color>
 
-    <color name="action_button_ripple_color">@color/black</color>
-    <color name="action_button_background_focused_color">@color/screen_white</color>
-    <color name="action_button_background_unfocused_color">@color/screen_white_10</color>
-    <color name="action_button_text_focused_color">@color/screen_black</color>
-    <color name="action_button_text_unfocused_color">@color/screen_white_70</color>
 
-    <color name="error_text">#EF9A9A</color>
 
-    <color name="settings_card_background">#0277BD</color>
-    <color name="settings_card_background_focussed">#01579B</color>
 
-    <color name="progressbarColor">#ffffff</color>
 
     <!-- Immich-like timeline scrubber accent -->
-    <color name="timeline_scrubber_accent">#4250AF</color>
-    <color name="timeline_scrubber_label">@color/screen_white</color>
-    <color name="timeline_scrubber_dot">@color/screen_white_70</color>
 
 </resources>

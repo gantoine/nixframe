@@ -8,16 +8,10 @@ import arrow.core.getOrElse
 import nl.giejay.android.tv.immich.api.model.Album
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.api.model.AssetResponse
-import nl.giejay.android.tv.immich.api.model.Folder
 import nl.giejay.android.tv.immich.api.model.Memory
-import nl.giejay.android.tv.immich.api.model.Partner
 import nl.giejay.android.tv.immich.api.model.Person
 import nl.giejay.android.tv.immich.api.model.SearchRequest
-import nl.giejay.android.tv.immich.api.model.UpdateAssetRequest
 import nl.giejay.android.tv.immich.api.model.SearchResponse
-import nl.giejay.android.tv.immich.api.model.TimeBucketSummary
-import nl.giejay.android.tv.immich.api.model.TimelineAsset
-import nl.giejay.android.tv.immich.api.model.toTimelineAssets
 import nl.giejay.android.tv.immich.api.service.ApiService
 import nl.giejay.android.tv.immich.api.util.ApiUtil.executeAPICall
 import nl.giejay.android.tv.immich.shared.prefs.API_KEY
@@ -26,10 +20,6 @@ import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.EXCLUDE_ASSETS_IN_ALBUM
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
-import nl.giejay.android.tv.immich.shared.prefs.RECENT_ASSETS_MONTHS_BACK
-import nl.giejay.android.tv.immich.shared.prefs.SHOW_PARTNER_PHOTOS_IN_TIMELINE
-import nl.giejay.android.tv.immich.shared.prefs.SIMILAR_ASSETS_PERIOD_DAYS
-import nl.giejay.android.tv.immich.shared.prefs.SIMILAR_ASSETS_YEARS_BACK
 import nl.giejay.android.tv.immich.shared.util.Utils.pmap
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -85,19 +75,6 @@ internal fun buildListAssetsSearchRequest(
     city = city
 )
 
-// internal so app/src/test can call it directly without instantiating ApiClient/Retrofit.
-// Server default for withPartners is false/omitted, so only send true when the user opted in -
-// issue #157: partner-shared photos never showed up in the Timeline because this was never wired up.
-internal fun resolveWithPartners(showPartnerPhotosInTimeline: Boolean): Boolean? {
-    return if (showPartnerPhotosInTimeline) true else null
-}
-
-// A partner's own timeline (userId set) must never send withPartners: the server would add all of
-// the caller's partners to the userId filter. The preference only applies to the own timeline.
-internal fun resolveTimelineWithPartners(userId: String?, showPartnerPhotosInTimeline: Boolean): Boolean? {
-    return if (userId != null) null else resolveWithPartners(showPartnerPhotosInTimeline)
-}
-
 internal fun SearchResponse.toAssetResponse(): AssetResponse =
     AssetResponse(assets.items, assets.nextPage != null)
 
@@ -151,20 +128,6 @@ class ApiClient(private val config: ApiClientConfig) {
         }
     }
 
-    /** Places: one representative asset per city that has a name, sorted by city. */
-    suspend fun listPlaces(): Either<String, List<Asset>> {
-        return executeAPICall(200) { service.listCities() }.map { assets ->
-            assets.filter { !it.exifInfo?.city.isNullOrBlank() }
-                .distinctBy { it.exifInfo!!.city }
-                .sortedBy { it.exifInfo!!.city!!.lowercase() }
-        }
-    }
-
-    /** Users who share their library with the signed-in user, sorted by name. */
-    suspend fun listPartners(): Either<String, List<Partner>> {
-        return executeAPICall(200) { service.listPartners() }.map { partners -> partners.sortedBy { it.name.lowercase() } }
-    }
-
     suspend fun listAssetsFromAlbum(albumIds: List<String>,
                                     contentType: ContentType = ContentType.ALL,
                                     pageCount: Int = 100): Either<String, AssetResponse> {
@@ -200,34 +163,6 @@ class ApiClient(private val config: ApiClientConfig) {
             allAssets.addAll(assets)
         }
         return Either.Right(AssetResponse(allAssets.filter(excludeByTag()), false))
-    }
-
-    suspend fun recentAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, AssetResponse> {
-        val now = LocalDateTime.now()
-        return listAssets(page, pageCount, true, "desc",
-            contentType = contentType, fromDate = now.minusMonths(PreferenceManager.get(RECENT_ASSETS_MONTHS_BACK).toLong()), endDate = now)
-            .map { it.copy(assets = it.assets.shuffled()) }
-    }
-
-    suspend fun similarAssets(page: Int, pageCount: Int, contentType: ContentType): Either<String, AssetResponse> {
-        val now = LocalDateTime.now()
-        val map: List<Either<String, AssetResponse>> = (0 until PreferenceManager.get(SIMILAR_ASSETS_YEARS_BACK)).toList().map {
-            listAssets(page,
-                pageCount,
-                true,
-                "desc",
-                fromDate = now.minusDays((PreferenceManager.get(SIMILAR_ASSETS_PERIOD_DAYS) / 2).toLong()).minusYears(it.toLong()),
-                endDate = now.plusDays((PreferenceManager.get(SIMILAR_ASSETS_PERIOD_DAYS) / 2).toLong()).minusYears(it.toLong()),
-                contentType = contentType)
-        }
-        if (map.all { it.isLeft() }) {
-            return map.first()
-        }
-        val responses = map.mapNotNull { it.getOrNull() }
-        return Either.Right(AssetResponse(
-            responses.flatMap { it.assets }.shuffled(),
-            responses.any { it.canLoadMore }
-        ))
     }
 
     suspend fun listAssets(page: Int,
@@ -268,82 +203,8 @@ class ApiClient(private val config: ApiClientConfig) {
         asset.tags?.none { t -> t.name == "exclude_immich_tv" } ?: true
     }
 
-    suspend fun listFolders(): Either<String, Folder> {
-        return executeAPICall(200) {
-            service.getUniquePaths()
-        }.map { paths ->
-            return Either.Right(createRootFolder(Folder("", mutableListOf(), null), paths))
-        }
-    }
-
-    private fun createRootFolder(parent: Folder, paths: List<String>): Folder {
-        paths.forEach { path ->
-            val directories = path.split("/")
-            createFolders(directories, parent)
-        }
-        return parent
-    }
-
-    private fun createFolders(paths: List<String>, currentParent: Folder): Folder {
-        if (paths.isEmpty()) {
-            return currentParent
-        }
-        val createdChild = Folder(paths.first(), mutableListOf(), currentParent)
-        val alreadyOwnedChild = currentParent.hasPath(paths.first())
-        if (alreadyOwnedChild != null) {
-            return createFolders(paths.drop(1), alreadyOwnedChild)
-        }
-        currentParent.children.add(createdChild)
-        return createFolders(paths.drop(1), createdChild)
-    }
-
-    suspend fun listAssetsForFolder(folder: String): Either<String, List<Asset>> {
-        return executeAPICall(200) {
-            service.getAssetsForPath(folder)
-        }.map { it.filter(excludeByTag()) }
-    }
-
     suspend fun getAsset(id: String): Either<String, Asset> {
         return executeAPICall(200) { service.getAsset(id) }
-    }
-
-    suspend fun updateFavorite(id: String, isFavorite: Boolean): Either<String, Asset> {
-        return executeAPICall(200) {
-            service.updateAsset(id, UpdateAssetRequest(isFavorite))
-        }
-    }
-
-    /** @param userId another user's (partner's) timeline; null for the signed-in user's own. */
-    suspend fun getTimeBuckets(userId: String? = null): Either<String, List<TimeBucketSummary>> =
-        executeAPICall(200) {
-            service.getTimeBuckets(
-                withPartners = resolveTimelineWithPartners(userId, PreferenceManager.get(SHOW_PARTNER_PHOTOS_IN_TIMELINE)),
-                userId = userId
-            )
-        }
-
-    /**
-     * Fetches all assets for a month bucket.
-     *
-     * V1 gap: [excludeByTag] / EXCLUDE_ASSETS_IN_ALBUM cannot apply here — bucket responses
-     * omit tags and album membership. Filtering those requires a follow-up ID set cross-check.
-     */
-    suspend fun getTimeBucket(timeBucket: String, userId: String? = null): Either<String, List<TimelineAsset>> =
-        executeAPICall(200) {
-            service.getTimeBucket(
-                timeBucket,
-                withPartners = resolveTimelineWithPartners(userId, PreferenceManager.get(SHOW_PARTNER_PHOTOS_IN_TIMELINE)),
-                userId = userId
-            )
-        }.map { it.toTimelineAssets() }
-
-    /** "On this day" style memories for the current moment (server filters by day-of-year). */
-    /**
-     * Recent memories regardless of the day they surfaced (GET /memories without `for`), newest
-     * first - what Immich's web UI lists. [getMemories] only returns the ones shown today.
-     */
-    suspend fun listRecentMemories(size: Int = 100): Either<String, List<Memory>> {
-        return executeAPICall(200) { service.getMemories(forDate = null, order = "desc", size = size) }
     }
 
     suspend fun getMemories(): Either<String, List<Memory>> {

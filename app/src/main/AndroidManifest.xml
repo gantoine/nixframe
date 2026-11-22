@@ -17,10 +17,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- leanback-preference 1.1.0-rc01 declares minSdk 21 but is only used for its Compat
-         preference fragments (no real API-21 dependency); allow it on this minSdk-19 build. -->
-    <uses-sdk tools:overrideLibrary="androidx.leanback.preference, androidx.tvprovider" />
-
     <!-- Keep the display awake while showing photos (Nixplay frame) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -32,9 +28,6 @@
 
     <!-- Access internet-based media -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- For writing to home screen channels -->
-    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
 
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
 
@@ -70,22 +63,6 @@
             android:exported="false"
             android:initOrder="2147483647" />
 
-        <service
-            android:name="nl.giejay.android.tv.immich.screensaver.ScreenSaverService"
-            android:exported="true"
-            android:label="Immich"
-            android:permission="android.permission.BIND_DREAM_SERVICE">
-            <intent-filter>
-                <category android:name="android.intent.category.DEFAULT" />
-                <action android:name="android.service.dreams.DreamService" />
-            </intent-filter>
-
-            <!-- Point to additional information for this dream (optional) -->
-            <meta-data
-                android:name="android.service.dream"
-                android:resource="@xml/screensaver" />
-        </service>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -103,29 +80,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
-            <!-- Deep links from home screen channel programs/channels, see homescreenchannels.ChannelDeepLinks -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="immichtv" />
-            </intent-filter>
-
         </activity>
-
-        <!-- BroadcastReceiver for setting up the home screen channel -->
-        <receiver
-            android:name="nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.media.tv.action.INITIALIZE_PROGRAMS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.media.tv.action.PREVIEW_PROGRAM_BROWSABLE_DISABLED" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </receiver>
 
     </application>
 

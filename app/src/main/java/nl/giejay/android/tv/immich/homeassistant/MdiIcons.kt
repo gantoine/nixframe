@@ -36,6 +36,12 @@ object MdiIcons {
         }
     }
 
+    /** The icon font, or null if it couldn't be loaded. */
+    fun typeface(context: Context): Typeface? {
+        load(context)
+        return typeface
+    }
+
     /** The glyph for an icon name ("lightbulb" or "mdi:lightbulb"), or null if unknown. */
     fun glyph(context: Context, name: String?): String? {
         if (name == null) return null
