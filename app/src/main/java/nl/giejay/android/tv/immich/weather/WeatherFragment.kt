@@ -4,6 +4,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +22,7 @@ import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.WEATHER_ANIMATED_BACKGROUND
 import nl.giejay.android.tv.immich.shared.prefs.WEATHER_LOCATION
 import nl.giejay.android.tv.immich.shared.prefs.WEATHER_USE_FAHRENHEIT
+import nl.giejay.android.tv.immich.shared.util.FrostedWallpaper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,6 +33,24 @@ class WeatherFragment : Fragment(), BrowseSupportFragment.MainFragmentAdapterPro
     private val mainFragmentAdapter = BrowseSupportFragment.MainFragmentAdapter(this)
 
     override fun getMainFragmentAdapter() = mainFragmentAdapter
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val wallpaperTick = object : Runnable {
+        override fun run() {
+            view?.findViewById<ImageView>(R.id.weather_wallpaper)?.let { FrostedWallpaper.load(this@WeatherFragment, it) }
+            handler.postDelayed(this, FrostedWallpaper.REFRESH_MS)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        handler.post(wallpaperTick)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        handler.removeCallbacks(wallpaperTick)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_weather, container, false)

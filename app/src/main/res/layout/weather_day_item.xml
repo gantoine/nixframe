@@ -26,7 +26,7 @@
         android:layout_width="46dp"
         android:layout_height="wrap_content"
         android:gravity="end"
-        android:textColor="#99FFFFFF"
+        android:textColor="#99EAEBEE"
         android:textSize="22sp" />
 
     <nl.giejay.android.tv.immich.weather.TempRangeBar

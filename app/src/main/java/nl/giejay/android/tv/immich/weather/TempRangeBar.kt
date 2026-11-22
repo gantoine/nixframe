@@ -56,7 +56,7 @@ class TempRangeBar @JvmOverloads constructor(
 
         paint.shader = null
         paint.style = Paint.Style.FILL
-        paint.color = 0x38000000
+        paint.color = 0x24FFFFFF
         rect.set(left - r, cy - r, right + r, cy + r)
         canvas.drawRoundRect(rect, r, r, paint)
 

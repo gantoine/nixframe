@@ -6,7 +6,21 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
 
-    <!-- Full-bleed animated sky (clouds, rain, snow…) behind the content. -->
+    <!-- Frosted Glass backdrop (as on the Home tab): a blurred library photo under a dark scrim,
+         over the sky gradient set in code, which shows until the photo loads. -->
+    <ImageView
+        android:id="@+id/weather_wallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_frosted_scrim" />
+
+    <!-- Full-bleed animated weather (clouds, rain, snow…) over the photo, behind the content. -->
     <nl.giejay.android.tv.immich.weather.WeatherAnimationView
         android:id="@+id/weather_animation"
         android:layout_width="match_parent"

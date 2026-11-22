@@ -374,8 +374,9 @@
     </style>
 
     <!-- White text with a soft shadow: enough lift over bright clouds without looking embossed. -->
+    <!-- Weather text uses the Frosted Glass theme's rgba(234,235,238,…) whites. -->
     <style name="WeatherText">
-        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:textColor">#FAEAEBEE</item>
         <item name="android:shadowColor">#59000000</item>
         <item name="android:shadowRadius">6</item>
         <item name="android:shadowDx">0</item>
@@ -383,12 +384,12 @@
     </style>
 
     <style name="WeatherTextSecondary" parent="WeatherText">
-        <item name="android:textColor">#CCFFFFFF</item>
+        <item name="android:textColor">#B8EAEBEE</item>
     </style>
 
     <!-- Small caps label used for panel headers and stat tiles (letterSpacing is API 21+, so none). -->
     <style name="WeatherLabel" parent="WeatherText">
-        <item name="android:textColor">#A6FFFFFF</item>
+        <item name="android:textColor">#99EAEBEE</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">true</item>
