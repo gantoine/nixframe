@@ -17,8 +17,7 @@ data class GalleryPhoto(
     val title: String,
     val artist: String?,
     /** Sized for the frame's screen. */
-    val imageUrl: String,
-    val thumbnailUrl: String
+    val imageUrl: String
 )
 
 sealed class GalleryResult {
@@ -40,7 +39,6 @@ object GalleryRepository {
 
     private const val BATCH_SIZE = 30
     private const val IMAGE_WIDTH = 1280
-    private const val THUMB_WIDTH = 400
     private const val MAX_TITLE_LENGTH = 70
 
     private val service: UnsplashService by lazy {
@@ -82,8 +80,7 @@ object GalleryRepository {
         id = id,
         title = titleFor(this),
         artist = user?.name?.trim()?.ifBlank { null },
-        imageUrl = sized(urls.raw, IMAGE_WIDTH, 80),
-        thumbnailUrl = sized(urls.raw, THUMB_WIDTH, 70)
+        imageUrl = sized(urls.raw, IMAGE_WIDTH, 80)
     )
 
     /** Unsplash's documented resize parameters on the raw URL (keeps its ixid tracking param). */

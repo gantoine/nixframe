@@ -525,7 +525,10 @@ class AmbientFragment : Fragment(), HouseFeed.Listener, SourcesView.Host, Settin
                 MetaDataType.DESCRIPTION to StaticMetaDataProvider(title),
                 MetaDataType.ARTIST to StaticMetaDataProvider(artist)
             ),
-            thumbnailUrl = thumbnailUrl,
+            // The slider shows thumbnailUrl instead of url when "Use high resolution thumbnails" is
+            // on (the default). For Immich that's the ~1440px preview; Unsplash has no such middle
+            // size, so hand it the screen-sized image rather than a small one that gets upscaled.
+            thumbnailUrl = imageUrl,
             isPanorama = false
         )
     )
