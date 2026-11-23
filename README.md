@@ -151,6 +151,16 @@ Set the panel to sleep quickly (the motion sensor / WakeLock handles waking):
 adb shell settings put system screen_off_timeout 1
 ```
 
+### 6. Power button
+
+The remote's power button turns the display off at once and back on again. Motion doesn't wake a
+display that was turned off this way. Turning it off right away needs the app's device admin, which
+only has the "lock screen" policy (the frame has no lock screen, so locking only turns the display
+off). On start, the app shows "Activate device administrator?" while the admin is off; press
+**Activate** with the remote. Overwriting `/system/app/immich.apk` turns the admin off again, so
+expect that screen after each system-app update. Without the admin, the button lets the display
+go dark at the next screen-off timeout instead.
+
 ## Networking & TLS on Android 4.4 frames
 
 **This is the gotcha that bites everyone with an API-19 frame.** KitKat's TLS stack only offers old

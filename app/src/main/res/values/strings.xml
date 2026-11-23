@@ -113,6 +113,7 @@
     <string name="gallery">Art gallery</string>
     <string name="gallery_query">Search term</string>
     <string name="gallery_query_desc">What the photos should show, e.g. nature, mountains, architecture. Leave empty for anything.</string>
+    <string name="screen_off_admin_explanation">Lets the remote\'s power button turn the screen off straight away. The frame has no lock screen, so nothing else changes.</string>
     <string name="gallery_unsplash_key">Unsplash access key</string>
     <string name="gallery_unsplash_key_desc">From unsplash.com/developers. Leave empty to use the key built into the app, if any.</string>
 

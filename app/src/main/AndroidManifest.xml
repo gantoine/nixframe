@@ -63,6 +63,19 @@
             android:exported="false"
             android:initOrder="2147483647" />
 
+        <!-- Lets the remote's power button switch the display off at once (sensors.ScreenOffAdmin). -->
+        <receiver
+            android:name=".sensors.ScreenOffAdmin"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/screen_off_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
