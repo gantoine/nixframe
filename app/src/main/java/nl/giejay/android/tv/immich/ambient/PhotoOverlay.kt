@@ -28,8 +28,8 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
     private val clockColumn = ui.vertical()
     private val weatherIcon = android.widget.ImageView(ui.context)
     private val outdoor = ui.text(88f, tracking = -2f, tight = true, shadow = true)
-    // The degree sign is its own view so it can hang past the right edge: the digits, not the
-    // sign, line up with the right end of the "inside" line below.
+    // The degree sign ends at the same 40px margin as the "inside" line below it, mirroring the
+    // clock and date on the left.
     private val degree = ui.text(88f, tight = true, shadow = true).apply { text = "°" }
     private val weatherRow = ui.horizontal()
     private val presence = ui.text(21f, Weight.MEDIUM, tracking = 3.5f, caps = true, shadow = true).apply { alignEnd = true }
@@ -61,13 +61,9 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
         weatherRow.addView(weatherIcon, ui.square(76f))
         weatherRow.addView(outdoor, ui.wrap().apply { leftMargin = ui.px(18) })
         weatherRow.addView(degree, ui.wrap())
-        degree.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
-        val hang = degree.measuredWidth
         right.addView(weatherRow, ui.wrap().apply { gravity = Gravity.END })
-        right.addView(presence, ui.wrap().apply { topMargin = ui.px(14); gravity = Gravity.END; rightMargin = hang })
-        strip.addView(right, ui.pinned(Gravity.BOTTOM or Gravity.END, right = 40f, bottom = 34f).apply {
-            rightMargin = (rightMargin - hang).coerceAtLeast(0)
-        })
+        right.addView(presence, ui.wrap().apply { topMargin = ui.px(14); gravity = Gravity.END })
+        strip.addView(right, ui.pinned(Gravity.BOTTOM or Gravity.END, right = 40f, bottom = 34f))
 
         addView(strip, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         message.visibility = View.GONE
