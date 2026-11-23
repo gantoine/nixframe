@@ -63,7 +63,13 @@ object HaFormat {
             return parseTimestamp(e.state)?.let { relativeTime(it, now) } ?: e.state
         }
         val value = e.state.toDoubleOrNull() ?: return humanizeIfSlug(e.state)
-        return withUnit(number(value), e.unit)
+        // HA rounds these for display; a thermostat reporting 67.46 °F reads as 67.5 °F there
+        val shown = when (e.deviceClass) {
+            "temperature" -> String.format(Locale.US, "%.1f", value).trimEnd('0').trimEnd('.')
+            "humidity" -> Math.round(value).toString()
+            else -> number(value)
+        }
+        return withUnit(shown, e.unit)
     }
 
     fun withUnit(value: String, unit: String?): String = when {
