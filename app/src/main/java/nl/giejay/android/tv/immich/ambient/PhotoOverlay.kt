@@ -26,7 +26,7 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
     private val time = ui.text(136f, tracking = -3f, tight = true, shadow = true)
     private val date = ui.text(21f, Weight.MEDIUM, tracking = 3.5f, caps = true, shadow = true)
     private val clockColumn = ui.vertical()
-    private val weatherIcon = ui.icon(null, 76f, shadow = true)
+    private val weatherIcon = android.widget.ImageView(ui.context)
     private val outdoor = ui.text(88f, tracking = -2f, tight = true, shadow = true)
     // The degree sign is its own view so it can hang past the right edge: the digits, not the
     // sign, line up with the right end of the "inside" line below.
@@ -87,7 +87,7 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
     fun bindHouse(outside: Pair<String, String>?, presenceLine: String?) {
         weatherRow.visibility = if (outside == null) View.GONE else View.VISIBLE
         outside?.let { (icon, temp) ->
-            ui.setIcon(weatherIcon, icon, "weather-cloudy")
+            weatherIcon.setImageResource(nl.giejay.android.tv.immich.ambient.ui.WeatherArt.drawable(icon))
             outdoor.text = temp.removeSuffix("°")
         }
         presence.text = presenceLine.orEmpty()

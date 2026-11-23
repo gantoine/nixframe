@@ -28,7 +28,7 @@ class GlanceView(private val ui: Ui) : FrameLayout(ui.context) {
     private val notices = ui.vertical()
 
     private val outsideSection = ui.vertical()
-    private val outsideIcon = ui.icon(null, 84f)
+    private val outsideIcon = android.widget.ImageView(ui.context)
     private val outsideTemp = ui.text(116f, tracking = -3f, tight = true)
     private val high = ui.text(20f, Weight.MEDIUM, tracking = 2.5f, caps = true)
     private val low = ui.text(20f, Weight.MEDIUM, DIM, tracking = 2.5f, caps = true)
@@ -127,7 +127,7 @@ class GlanceView(private val ui: Ui) : FrameLayout(ui.context) {
 
         outsideSection.visibility = if (outside == null) View.GONE else View.VISIBLE
         outside?.let { o ->
-            ui.setIcon(outsideIcon, o.icon, "weather-cloudy")
+            outsideIcon.setImageResource(nl.giejay.android.tv.immich.ambient.ui.WeatherArt.drawable(o.icon))
             outsideTemp.text = o.temperature
             high.text = o.high?.let { "H $it" }.orEmpty()
             low.text = o.low?.let { "L $it" }.orEmpty()
