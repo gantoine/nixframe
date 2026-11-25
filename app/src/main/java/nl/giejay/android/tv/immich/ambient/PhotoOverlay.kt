@@ -27,9 +27,14 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
     private val date = ui.text(21f, Weight.MEDIUM, tracking = 3.5f, caps = true, shadow = true)
     private val clockColumn = ui.vertical()
     private val weatherIcon = android.widget.ImageView(ui.context)
+    // Below zero the sign is a short hyphen in its own view, raised to the middle of the digits:
+    // the typographic minus (U+2212) is as wide as a digit and looks too long at this size.
+    private val sign = ui.text(88f, tight = true, shadow = true).apply {
+        text = "-"
+        translationY = -ui.px(7).toFloat()
+        visibility = View.GONE
+    }
     private val outdoor = ui.text(88f, tracking = -2f, tight = true, shadow = true)
-    // The degree sign ends at the same 40px margin as the "inside" line below it, mirroring the
-    // clock and date on the left.
     private val degree = ui.text(88f, tight = true, shadow = true).apply { text = "°" }
     private val weatherRow = ui.horizontal()
     private val presence = ui.text(21f, Weight.MEDIUM, tracking = 3.5f, caps = true, shadow = true).apply { alignEnd = true }
@@ -58,8 +63,10 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
         strip.addView(infoColumn, ui.pinned(Gravity.BOTTOM or Gravity.START, left = 40f, bottom = 34f, right = 420f))
 
         val right = ui.vertical().apply { gravity = Gravity.END }
-        weatherRow.addView(weatherIcon, ui.square(76f))
-        weatherRow.addView(outdoor, ui.wrap().apply { leftMargin = ui.px(18) })
+        // The condition picture, then the temperature; the degree sign ends at the 40px right margin.
+        weatherRow.addView(weatherIcon, ui.square(84f).apply { rightMargin = ui.px(18) })
+        weatherRow.addView(sign, ui.wrap().apply { rightMargin = ui.px(2) })
+        weatherRow.addView(outdoor, ui.wrap())
         weatherRow.addView(degree, ui.wrap())
         right.addView(weatherRow, ui.wrap().apply { gravity = Gravity.END })
         right.addView(presence, ui.wrap().apply { topMargin = ui.px(14); gravity = Gravity.END })
@@ -84,7 +91,10 @@ class PhotoOverlay(private val ui: Ui) : FrameLayout(ui.context) {
         weatherRow.visibility = if (outside == null) View.GONE else View.VISIBLE
         outside?.let { (icon, temp) ->
             weatherIcon.setImageResource(nl.giejay.android.tv.immich.ambient.ui.WeatherArt.drawable(icon))
-            outdoor.text = temp.removeSuffix("°")
+            val number = temp.removeSuffix("°")
+            val negative = number.startsWith("−") || number.startsWith("-")
+            sign.visibility = if (negative) View.VISIBLE else View.GONE
+            outdoor.text = if (negative) number.substring(1) else number
         }
         presence.text = presenceLine.orEmpty()
         presence.visibility = if (presenceLine.isNullOrEmpty()) View.GONE else View.VISIBLE
